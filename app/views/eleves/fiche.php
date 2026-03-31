@@ -95,10 +95,24 @@
             </div>
         </div>
 
-        <!-- Paiements -->
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-cash-coin me-1 text-primary"></i> Paiements de scolarité</span>
+        <!-- Absences -->
+        <div class="card mt-3">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-calendar-x text-warning"></i> Absences
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                <?php if (AuthMiddleware::hasRole(ROLE_ADMIN) || AuthMiddleware::hasRole(ROLE_PROF)): ?>
+                <a href="<?= Router::url('absences/ajouter?eleve=' . $eleve['id']) ?>"
+                   class="btn btn-warning btn-sm">
+                    <i class="bi bi-plus-circle me-1"></i> Enregistrer une absence
+                </a>
+                <?php endif; ?>
+                <a href="<?= Router::url('absences/eleve/' . $eleve['id']) ?>"
+                   class="btn btn-outline-warning btn-sm">
+                    <i class="bi bi-calendar-x me-1"></i> Voir les absences
+                </a>
+            </div>
+        </div>
             </div>
             <div class="card-body d-flex flex-column gap-2">
                 <?php if (AuthMiddleware::hasRole(ROLE_ADMIN)): ?>

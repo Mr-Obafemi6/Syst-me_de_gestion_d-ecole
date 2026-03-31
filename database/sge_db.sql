@@ -244,3 +244,28 @@ INSERT IGNORE INTO `classes` (`nom`, `niveau`, `annee_scolaire_id`)
 SELECT '6ème A', 'Sixième', id FROM `annees_scolaires` WHERE active = 1 LIMIT 1;
 
 SELECT 'Optimisations Phase 10 appliquées.' AS message;
+
+-- ===== ABSENCES =====
+CREATE TABLE IF NOT EXISTS `absences` (
+    `id`          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+    `eleve_id`    INT UNSIGNED    NOT NULL,
+    `date_absence` DATE           NOT NULL,
+    `heure_debut` TIME            DEFAULT NULL,
+    `heure_fin`   TIME            DEFAULT NULL,
+    `motif`       ENUM('maladie','familial','non_justifie','autre') NOT NULL DEFAULT 'non_justifie',
+    `justifiee`   TINYINT(1)      NOT NULL DEFAULT 0,
+    `commentaire` VARCHAR(255)    DEFAULT NULL,
+    `saisie_par`  INT UNSIGNED    NOT NULL,
+    `created_at`  TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_eleve`  (`eleve_id`),
+    INDEX `idx_date`   (`date_absence`),
+    CONSTRAINT `fk_absences_eleve`
+        FOREIGN KEY (`eleve_id`) REFERENCES `eleves`(`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_absences_user`
+        FOREIGN KEY (`saisie_par`) REFERENCES `users`(`id`)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SELECT 'Table absences créée.' AS message;

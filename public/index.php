@@ -46,6 +46,8 @@ $routes = [
     'paiements'  => 'PaiementController',
     'parametres' => 'ParametreController',
     'export'     => 'ExportController',
+    'absences'   => 'AbsenceController',
+    'recherche'  => 'RechercheController',
 ];
 
 $controllerName = $routes[$segment] ?? null;
