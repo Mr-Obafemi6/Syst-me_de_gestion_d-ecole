@@ -104,4 +104,24 @@ class User extends Model {
         );
         return (int)$count > 0;
     }
+
+    /**
+     * Trouve les utilisateurs par critères (role, actif, etc.)
+     */
+    public function findBy(array $criteria): array {
+        $where = [];
+        $params = [];
+
+        foreach ($criteria as $column => $value) {
+            $where[] = "`{$column}` = ?";
+            $params[] = $value;
+        }
+
+        if (empty($where)) {
+            return [];
+        }
+
+        $whereSQL = 'WHERE ' . implode(' AND ', $where);
+        return $this->query("SELECT * FROM `users` {$whereSQL} ORDER BY `nom`, `prenom`", $params);
+    }
 }

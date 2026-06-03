@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS `paiements` (
     `recu_numero`   VARCHAR(30)     NOT NULL,
     `montant_fcfa`  INT UNSIGNED    NOT NULL,
     `date_paiement` DATE            NOT NULL,
-    `mode_paiement` ENUM('especes','mobile_money','virement') NOT NULL DEFAULT 'especes',
+    `mode_paiement` ENUM('especes','mobile_money','virement','flooz','tymoni') NOT NULL DEFAULT 'especes',
     `statut`        ENUM('paye','partiel','annule')            NOT NULL DEFAULT 'paye',
     `annee_id`      INT UNSIGNED    NOT NULL,
     `commentaire`   VARCHAR(255)    DEFAULT NULL,

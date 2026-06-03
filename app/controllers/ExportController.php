@@ -202,7 +202,13 @@ class ExportController extends Controller {
             [$anneeId]
         );
 
-        $modeLabel = ['especes' => 'Espèces', 'mobile_money' => 'Mobile Money', 'virement' => 'Virement'];
+        $modeLabel = [
+            'especes'      => 'Espèces',
+            'mobile_money' => 'Mobile Money',
+            'virement'     => 'Virement',
+            'flooz'        => 'Flooz',
+            'tymoni'       => 'Tymoni',
+        ];
         $statutLabel = ['paye' => 'Payé', 'partiel' => 'Partiel', 'annule' => 'Annulé'];
 
         $nomFichier = 'paiements_' . ($annee['libelle'] ?? date('Y')) . '_' . date('Ymd') . '.csv';

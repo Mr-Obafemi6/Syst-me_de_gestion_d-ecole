@@ -25,6 +25,14 @@ ini_set('session.use_strict_mode', 1);
 session_name(SESSION_NAME);
 session_start();
 
+// Initialiser le système de notifications
+require_once ROOT_PATH . '/app/services/NotificationListener.php';
+require_once ROOT_PATH . '/app/services/NotificationService.php';
+require_once ROOT_PATH . '/app/services/EmailNotificationListener.php';
+require_once ROOT_PATH . '/app/services/InAppNotificationListener.php';
+require_once ROOT_PATH . '/app/services/NotificationBootstrap.php';
+NotificationBootstrap::initialize();
+
 // Récupérer l'URL
 $url = $_GET['url'] ?? 'dashboard';
 $url = rtrim($url, '/');
@@ -48,6 +56,7 @@ $routes = [
     'export'     => 'ExportController',
     'absences'   => 'AbsenceController',
     'recherche'  => 'RechercheController',
+    'notifications' => 'NotificationController',
 ];
 
 $controllerName = $routes[$segment] ?? null;

@@ -111,27 +111,43 @@
 
         <!-- Topbar -->
         <header class="topbar">
-            <button id="sidebarToggle" class="btn btn-sm">
+            <button id="sidebarToggle" class="btn btn-sm" title="Réduire/Agrandir le menu">
                 <i class="bi bi-list fs-4"></i>
             </button>
-            <h5 class="mb-0 d-none d-md-block"><?= htmlspecialchars($pageTitle ?? '') ?></h5>
+
+            <!-- Titre de la page -->
+            <h5 class="mb-0 d-none d-md-block me-3"><?= htmlspecialchars($pageTitle ?? 'Tableau de bord') ?></h5>
 
             <!-- Recherche globale -->
-            <div class="flex-fill mx-3" style="max-width:380px">
-                <div class="position-relative">
-                    <input type="text" id="global-search" class="form-control form-control-sm"
-                           placeholder="Rechercher élève, classe, reçu..."
-                           autocomplete="off">
-                    <div id="search-dropdown"
-                         class="position-absolute w-100 bg-white border rounded shadow-sm"
-                         style="z-index:1050;display:none;max-height:320px;overflow-y:auto;top:100%;left:0">
-                    </div>
+            <div class="flex-fill position-relative" style="max-width:360px">
+                <input type="text" id="global-search"
+                       placeholder="&#128269; Rechercher élève, classe, reçu..."
+                       autocomplete="off">
+                <div id="search-dropdown"
+                     class="position-absolute w-100 bg-white border rounded shadow"
+                     style="z-index:1050;display:none;max-height:320px;overflow-y:auto;top:calc(100% + 6px);left:0">
                 </div>
             </div>
 
-            <div class="topbar-right">
-                <a href="<?= Router::url('auth/logout') ?>" class="btn btn-sm btn-outline-danger">
-                    <i class="bi bi-box-arrow-right"></i> Déconnexion
+            <div class="topbar-right ms-auto">
+                <!-- Notifications -->
+                <a href="<?= Router::url('notifications') ?>" class="btn btn-sm btn-outline-info position-relative me-2" title="Notifications">
+                    <i class="bi bi-bell"></i>
+                    <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none;">
+                        <span id="notification-count">0</span>
+                    </span>
+                </a>
+
+                <span class="d-none d-md-inline text-muted small me-2">
+                    <i class="bi bi-person-circle me-1"></i>
+                    <?= htmlspecialchars(($user['prenom'] ?? '') . ' ' . ($user['nom'] ?? '')) ?>
+                </span>
+                <a href="<?= Router::url('auth/profil') ?>" class="btn btn-sm btn-outline-secondary me-1" title="Mon profil">
+                    <i class="bi bi-person"></i>
+                </a>
+                <a href="<?= Router::url('auth/logout') ?>" class="btn btn-sm btn-outline-danger" title="Déconnexion">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span class="d-none d-lg-inline"> Déconnexion</span>
                 </a>
             </div>
         </header>
@@ -234,6 +250,32 @@ function afficherResultats(results, q) {
     searchDropdown.innerHTML = html;
     searchDropdown.style.display = 'block';
 }
+
+// Mettre à jour le badge de notifications
+document.addEventListener('DOMContentLoaded', function() {
+    function updateNotificationBadge() {
+        fetch('<?= Router::url('notifications/getUnreadBadge') ?>')
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('notification-badge');
+                const count = document.getElementById('notification-count');
+
+                if (data.unread_count > 0) {
+                    count.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(e => console.error('Erreur notifications:', e));
+    }
+
+    // Mettre à jour immédiatement
+    updateNotificationBadge();
+
+    // Vérifier toutes les 30 secondes
+    setInterval(updateNotificationBadge, 30000);
+});
 </script>
 </body>
 </html>

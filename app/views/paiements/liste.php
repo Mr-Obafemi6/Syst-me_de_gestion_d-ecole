@@ -124,8 +124,20 @@
                     </td>
                     <td class="text-center">
                         <?php
-                        $modeIcon = ['especes' => 'bi-cash', 'mobile_money' => 'bi-phone', 'virement' => 'bi-bank'];
-                        $modeLabel = ['especes' => 'Espèces', 'mobile_money' => 'Mobile Money', 'virement' => 'Virement'];
+                        $modeIcon = [
+                            'especes'      => 'bi-cash',
+                            'mobile_money' => 'bi-phone',
+                            'virement'     => 'bi-bank',
+                            'flooz'        => 'bi-globe',
+                            'tymoni'       => 'bi-credit-card-2-back',
+                        ];
+                        $modeLabel = [
+                            'especes'      => 'Espèces',
+                            'mobile_money' => 'Mobile Money',
+                            'virement'     => 'Virement',
+                            'flooz'        => 'Flooz',
+                            'tymoni'       => 'Tymoni',
+                        ];
                         ?>
                         <span title="<?= $modeLabel[$pai['mode_paiement']] ?? '' ?>">
                             <i class="bi <?= $modeIcon[$pai['mode_paiement']] ?? 'bi-cash' ?>"></i>

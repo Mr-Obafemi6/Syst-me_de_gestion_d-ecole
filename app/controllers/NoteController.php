@@ -208,6 +208,17 @@ class NoteController extends Controller {
             'commentaire' => $commentaire ?: null,
         ]);
 
+        // Dispatcher notification
+        NotificationService::getInstance()->dispatch('note.created', [
+            'eleve_id'   => $eleveId,
+            'matiere_id' => $matiereId,
+            'note_value' => $note,
+            'type_eval'  => $typeEval,
+            'periode'    => $periode,
+            'prof_id'    => AuthMiddleware::user()['id'],
+            'note_id'    => $id
+        ]);
+
         // Recalculer la moyenne
         $moyennes = $this->noteModel->moyennesParEleve($eleveId, $periode);
         $moyMatiere = null;
@@ -242,6 +253,13 @@ class NoteController extends Controller {
         }
 
         $this->noteModel->delete($id);
+
+        // Dispatcher notification
+        NotificationService::getInstance()->dispatch('note.deleted', [
+            'eleve_id'  => $note['eleve_id'],
+            'note_id'   => $id,
+            'matiere_id' => $note['matiere_id']
+        ]);
 
         // Recalculer la moyenne après suppression
         $moyenne = $this->noteModel->moyenneGenerale($note['eleve_id'], $note['periode']);

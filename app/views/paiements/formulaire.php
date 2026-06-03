@@ -107,7 +107,13 @@
                     <label class="form-label fw-semibold">Mode de paiement</label>
                     <select name="mode_paiement" class="form-select">
                         <?php
-                        $modes = ['especes' => '💵 Espèces', 'mobile_money' => '📱 Mobile Money', 'virement' => '🏦 Virement'];
+                        $modes = [
+                            'especes'      => '💵 Espèces',
+                            'mobile_money' => '📱 Mobile Money',
+                            'virement'     => '🏦 Virement',
+                            'flooz'        => '🌐 Flooz',
+                            'tymoni'       => '💳 Tymoni',
+                        ];
                         foreach ($modes as $val => $label):
                         ?>
                         <option value="<?= $val ?>"

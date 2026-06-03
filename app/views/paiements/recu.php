@@ -3,7 +3,13 @@
 $nomEcole  = $params['nom_ecole'] ?? 'Groupe Scolaire';
 $adresse   = $params['adresse']   ?? 'Lomé, Togo';
 $telephone = $params['telephone'] ?? '';
-$modeLabel = ['especes' => 'Espèces', 'mobile_money' => 'Mobile Money', 'virement' => 'Virement'];
+$modeLabel = [
+    'especes'      => 'Espèces',
+    'mobile_money' => 'Mobile Money',
+    'virement'     => 'Virement',
+    'flooz'        => 'Flooz',
+    'tymoni'       => 'Tymoni',
+];
 ?>
 
 <div class="recu-wrapper">

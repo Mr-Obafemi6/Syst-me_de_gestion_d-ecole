@@ -125,6 +125,15 @@ class PaiementController extends Controller {
 
         $id = $this->paiementModel->insert($data);
 
+        // Dispatcher notification
+        NotificationService::getInstance()->dispatch('payment.created', [
+            'eleve_id'      => $eleveId,
+            'montant_fcfa'  => $data['montant_fcfa'],
+            'mode_paiement' => $data['mode_paiement'],
+            'payment_id'    => $id,
+            'recu_numero'   => $data['recu_numero']
+        ]);
+
         $this->flash('success',
             'Paiement enregistré. Reçu N° : ' . $data['recu_numero']
         );
@@ -171,7 +180,14 @@ class PaiementController extends Controller {
         $this->validateCsrf();
 
         $id = (int) $param;
+        $paiement = $this->paiementModel->findById($id);
         $this->paiementModel->update($id, ['statut' => 'annule']);
+
+        // Dispatcher notification
+        NotificationService::getInstance()->dispatch('payment.cancelled', [
+            'eleve_id'   => $paiement['eleve_id'] ?? null,
+            'payment_id' => $id
+        ]);
 
         $this->flash('success', 'Paiement annulé.');
         Router::redirect('paiements');
@@ -195,7 +211,7 @@ class PaiementController extends Controller {
         if (empty($data['date_paiement']))
             $errors['date_paiement'] = 'La date est obligatoire.';
 
-        if (!in_array($data['mode_paiement'], ['especes', 'mobile_money', 'virement']))
+        if (!in_array($data['mode_paiement'], ['especes', 'mobile_money', 'virement', 'flooz', 'tymoni']))
             $errors['mode_paiement'] = 'Mode de paiement invalide.';
 
         if (!$data['annee_id'])

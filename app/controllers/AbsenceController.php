@@ -110,7 +110,16 @@ class AbsenceController extends Controller {
             return;
         }
 
-        $this->absenceModel->insert($data);
+        $absenceId = $this->absenceModel->insert($data);
+
+        // Dispatcher notification
+        NotificationService::getInstance()->dispatch('absence.created', [
+            'eleve_id'      => $eleveId,
+            'date_absence'  => $data['date_absence'],
+            'motif'         => $data['motif'],
+            'absence_id'    => $absenceId
+        ]);
+
         $this->flash('success', 'Absence enregistrée pour ' . ($eleve['prenom'] ?? '') . ' ' . ($eleve['nom'] ?? '') . '.');
         Router::redirect('absences?eleve=' . $eleveId);
     }
@@ -124,7 +133,14 @@ class AbsenceController extends Controller {
         $this->validateCsrf();
 
         $id = (int) $param;
+        $absence = $this->absenceModel->findById($id);
         $this->absenceModel->update($id, ['justifiee' => 1]);
+
+        // Dispatcher notification
+        NotificationService::getInstance()->dispatch('absence.justified', [
+            'eleve_id'   => $absence['eleve_id'] ?? null,
+            'absence_id' => $id
+        ]);
 
         $this->flash('success', 'Absence marquée comme justifiée.');
         Router::redirect('absences');
@@ -143,6 +159,13 @@ class AbsenceController extends Controller {
         $eleveId = $absence['eleve_id'] ?? 0;
 
         $this->absenceModel->delete($id);
+
+        // Dispatcher notification (suppression absence)
+        NotificationService::getInstance()->dispatch('absence.deleted', [
+            'eleve_id'   => $eleveId,
+            'absence_id' => $id
+        ]);
+
         $this->flash('success', 'Absence supprimée.');
         Router::redirect('absences' . ($eleveId ? '?eleve=' . $eleveId : ''));
     }
