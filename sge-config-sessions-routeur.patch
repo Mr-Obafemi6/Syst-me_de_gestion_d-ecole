@@ -1,0 +1,165 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..64db2e0
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++config/config.local.php
++public/uploads/*
++!public/uploads/.htaccess
++!public/uploads/logos/
+diff --git a/app/controllers/NoteController.php b/app/controllers/NoteController.php
+index c3bdf81..a4484dd 100644
+--- a/app/controllers/NoteController.php
++++ b/app/controllers/NoteController.php
+@@ -217,11 +217,23 @@ class NoteController extends Controller {
+         // Validation
+         $eleveId   = (int) ($input['eleve_id']   ?? 0);
+         $matiereId = (int) ($input['matiere_id'] ?? 0);
+-        $note      = (float) ($input['note']      ?? -1);
++        $rawNote   = $input['note'] ?? null;
+         $typeEval  = $input['type_eval']  ?? 'devoir';
+         $periode   = (int) ($input['periode']    ?? 1);
+         $dateEval  = $input['date_eval']  ?? date('Y-m-d');
+-        $commentaire = trim($input['commentaire'] ?? '');
++        $commentaire = is_string($input['commentaire'] ?? '') ? trim($input['commentaire'] ?? '') : '';
++        $commentaire = mb_substr($commentaire, 0, 500);
++
++        // « abc » ne doit plus devenir 0 : la note doit être numérique
++        if (!is_int($rawNote) && !is_float($rawNote) && !(is_string($rawNote) && is_numeric($rawNote))) {
++            $this->json(['error' => 'La note doit être un nombre'], 400);
++        }
++        $note = round((float) $rawNote, 2);
++
++        $d = is_string($dateEval) ? DateTime::createFromFormat('Y-m-d', $dateEval) : false;
++        if (!$d || $d->format('Y-m-d') !== $dateEval) {
++            $this->json(['error' => 'Date d\'évaluation invalide (format AAAA-MM-JJ)'], 400);
++        }
+ 
+         if ($eleveId <= 0 || $matiereId <= 0) {
+             $this->json(['error' => 'eleve_id et matiere_id sont obligatoires'], 400);
+@@ -231,7 +243,7 @@ class NoteController extends Controller {
+             $this->json(['error' => 'La note doit être entre 0 et 20'], 400);
+         }
+ 
+-        if (!in_array($typeEval, ['devoir', 'composition', 'examen'])) {
++        if (!in_array($typeEval, ['devoir', 'composition', 'examen'], true)) {
+             $this->json(['error' => 'Type d\'évaluation invalide'], 400);
+         }
+ 
+diff --git a/app/controllers/ParametreController.php b/app/controllers/ParametreController.php
+index 53d1358..10f1a98 100644
+--- a/app/controllers/ParametreController.php
++++ b/app/controllers/ParametreController.php
+@@ -239,6 +239,16 @@ class ParametreController extends Controller {
+             $errors['email'] = 'Cet email est déjà utilisé.';
+         }
+ 
++        // Un administrateur ne peut ni se rétrograder ni se désactiver lui-même
++        if ($id === (int) AuthMiddleware::user()['id']) {
++            if ($data['role'] !== ROLE_ADMIN) {
++                $errors['role'] = 'Vous ne pouvez pas modifier votre propre rôle.';
++            }
++            if (empty($data['actif'])) {
++                $errors['actif'] = 'Vous ne pouvez pas désactiver votre propre compte.';
++            }
++        }
++
+         if (!empty($errors)) {
+             $data['id'] = $id;
+             $this->render('parametres/formulaire_user', [
+diff --git a/config/config.local.example.php b/config/config.local.example.php
+new file mode 100644
+index 0000000..2e47ba3
+--- /dev/null
++++ b/config/config.local.example.php
+@@ -0,0 +1,11 @@
++<?php
++// Copiez ce fichier en config/config.local.php puis adaptez les valeurs.
++// config.local.php est ignoré par Git : c'est là que vivent vos identifiants.
++
++define('DB_HOST', 'localhost');
++define('DB_NAME', 'sge_db');
++define('DB_USER', 'sge_user');       // évitez 'root' dès que l'appli n'est plus en local
++define('DB_PASS', 'mot_de_passe_solide');
++
++// URL publique du dossier public/ (sans slash final)
++define('BASE_URL', 'http://localhost/Systemegestionecole/public');
+diff --git a/config/constants.php b/config/constants.php
+index e05551f..d72e267 100644
+--- a/config/constants.php
++++ b/config/constants.php
+@@ -1,6 +1,11 @@
+ <?php
+ // config/constants.php
+ 
++// Surcharges locales (identifiants, URL) — fichier ignoré par Git
++if (is_file(__DIR__ . '/config.local.php')) {
++    require_once __DIR__ . '/config.local.php';
++}
++
+ if (!defined('BASE_URL')) {
+     // Nom du dossier avec espace et accent — encodage URL obligatoire
+     define('BASE_URL', 'http://localhost/Systemegestionecole/public');
+diff --git a/config/database.php b/config/database.php
+index 7fa1710..34aebca 100644
+--- a/config/database.php
++++ b/config/database.php
+@@ -1,11 +1,16 @@
+ <?php
+ // config/database.php — Connexion PDO centralisée
+ 
+-define('DB_HOST', 'localhost');
+-define('DB_NAME', 'sge_db');
+-define('DB_USER', 'root');
+-define('DB_PASS', '');
+-define('DB_CHARSET', 'utf8mb4');
++// Identifiants : config/config.local.php (voir config.local.example.php).
++// Les valeurs ci-dessous ne servent que de repli pour un poste de développement.
++if (is_file(__DIR__ . '/config.local.php')) {
++    require_once __DIR__ . '/config.local.php';
++}
++if (!defined('DB_HOST'))    define('DB_HOST', 'localhost');
++if (!defined('DB_NAME'))    define('DB_NAME', 'sge_db');
++if (!defined('DB_USER'))    define('DB_USER', 'root');
++if (!defined('DB_PASS'))    define('DB_PASS', '');
++if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
+ 
+ class Database {
+     private static ?PDO $instance = null;
+diff --git a/public/index.php b/public/index.php
+index 1002985..391ac5d 100644
+--- a/public/index.php
++++ b/public/index.php
+@@ -24,6 +24,11 @@ foreach (glob(ROOT_PATH . '/app/models/*.php') as $model) {
+ // Session sécurisée
+ ini_set('session.cookie_httponly', 1);
+ ini_set('session.use_strict_mode', 1);
++ini_set('session.use_only_cookies', 1);
++ini_set('session.cookie_samesite', 'Lax');
++if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
++    ini_set('session.cookie_secure', 1); // cookie jamais envoyé en HTTP simple
++}
+ session_name(SESSION_NAME);
+ session_start();
+ 
+@@ -89,7 +94,9 @@ if (!file_exists($controllerFile)) {
+ try {
+     require_once $controllerFile;
+     $controller = new $controllerName();
+-    if (method_exists($controller, $method)) {
++    // is_callable depuis l'extérieur : refuse les méthodes protected/private ;
++    // on écarte aussi __construct et toute méthode magique (préfixe « _ »).
++    if ($method !== '' && $method[0] !== '_' && is_callable([$controller, $method])) {
+         $controller->$method($param);
+     } else {
+         $controller->index($param);
+@@ -98,7 +105,7 @@ try {
+     error_log('SGE PDO Error: ' . $e->getMessage());
+     http_response_code(500);
+     require ROOT_PATH . '/app/views/errors/500.php';
+-} catch (Exception $e) {
++} catch (Throwable $e) { // inclut Error et TypeError, pas seulement Exception
+     error_log('SGE Error: ' . $e->getMessage());
+     http_response_code(500);
+     require ROOT_PATH . '/app/views/errors/500.php';

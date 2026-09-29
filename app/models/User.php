@@ -21,7 +21,11 @@ class User extends Model {
      */
     public function authenticate(string $email, string $password): ?array {
         $user = $this->findByEmail($email);
-        if (!$user) return null;
+        if (!$user) {
+            // Même coût de calcul qu'un vrai compte : pas d'énumération par le temps de réponse
+            password_verify($password, '$2b$12$qVwm0PZRdmo0nBtn1AFINuZS1azAbEnuEOhmkVAARSciQ3mXRthSm');
+            return null;
+        }
         if (!password_verify($password, $user['password_hash'])) return null;
         return $user;
     }

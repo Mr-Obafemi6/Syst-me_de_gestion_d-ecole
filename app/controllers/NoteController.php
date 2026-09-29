@@ -217,11 +217,23 @@ class NoteController extends Controller {
         // Validation
         $eleveId   = (int) ($input['eleve_id']   ?? 0);
         $matiereId = (int) ($input['matiere_id'] ?? 0);
-        $note      = (float) ($input['note']      ?? -1);
+        $rawNote   = $input['note'] ?? null;
         $typeEval  = $input['type_eval']  ?? 'devoir';
         $periode   = (int) ($input['periode']    ?? 1);
         $dateEval  = $input['date_eval']  ?? date('Y-m-d');
-        $commentaire = trim($input['commentaire'] ?? '');
+        $commentaire = is_string($input['commentaire'] ?? '') ? trim($input['commentaire'] ?? '') : '';
+        $commentaire = mb_substr($commentaire, 0, 500);
+
+        // « abc » ne doit plus devenir 0 : la note doit être numérique
+        if (!is_int($rawNote) && !is_float($rawNote) && !(is_string($rawNote) && is_numeric($rawNote))) {
+            $this->json(['error' => 'La note doit être un nombre'], 400);
+        }
+        $note = round((float) $rawNote, 2);
+
+        $d = is_string($dateEval) ? DateTime::createFromFormat('Y-m-d', $dateEval) : false;
+        if (!$d || $d->format('Y-m-d') !== $dateEval) {
+            $this->json(['error' => 'Date d\'évaluation invalide (format AAAA-MM-JJ)'], 400);
+        }
 
         if ($eleveId <= 0 || $matiereId <= 0) {
             $this->json(['error' => 'eleve_id et matiere_id sont obligatoires'], 400);
@@ -231,7 +243,7 @@ class NoteController extends Controller {
             $this->json(['error' => 'La note doit être entre 0 et 20'], 400);
         }
 
-        if (!in_array($typeEval, ['devoir', 'composition', 'examen'])) {
+        if (!in_array($typeEval, ['devoir', 'composition', 'examen'], true)) {
             $this->json(['error' => 'Type d\'évaluation invalide'], 400);
         }
 

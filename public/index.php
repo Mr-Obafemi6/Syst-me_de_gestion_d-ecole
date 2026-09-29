@@ -14,6 +14,7 @@ require_once ROOT_PATH . '/app/core/Controller.php';
 require_once ROOT_PATH . '/app/core/Model.php';
 require_once ROOT_PATH . '/app/middleware/AuthMiddleware.php';
 require_once ROOT_PATH . '/app/services/AuthorizationService.php';
+require_once ROOT_PATH . '/app/services/LoginThrottle.php';
 
 // Autoload des modèles
 foreach (glob(ROOT_PATH . '/app/models/*.php') as $model) {
@@ -23,6 +24,11 @@ foreach (glob(ROOT_PATH . '/app/models/*.php') as $model) {
 // Session sécurisée
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_strict_mode', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_samesite', 'Lax');
+if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+    ini_set('session.cookie_secure', 1); // cookie jamais envoyé en HTTP simple
+}
 session_name(SESSION_NAME);
 session_start();
 
@@ -88,7 +94,9 @@ if (!file_exists($controllerFile)) {
 try {
     require_once $controllerFile;
     $controller = new $controllerName();
-    if (method_exists($controller, $method)) {
+    // is_callable depuis l'extérieur : refuse les méthodes protected/private ;
+    // on écarte aussi __construct et toute méthode magique (préfixe « _ »).
+    if ($method !== '' && $method[0] !== '_' && is_callable([$controller, $method])) {
         $controller->$method($param);
     } else {
         $controller->index($param);
@@ -97,7 +105,7 @@ try {
     error_log('SGE PDO Error: ' . $e->getMessage());
     http_response_code(500);
     require ROOT_PATH . '/app/views/errors/500.php';
-} catch (Exception $e) {
+} catch (Throwable $e) { // inclut Error et TypeError, pas seulement Exception
     error_log('SGE Error: ' . $e->getMessage());
     http_response_code(500);
     require ROOT_PATH . '/app/views/errors/500.php';

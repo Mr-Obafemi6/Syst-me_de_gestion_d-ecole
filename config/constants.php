@@ -1,6 +1,11 @@
 <?php
 // config/constants.php
 
+// Surcharges locales (identifiants, URL) — fichier ignoré par Git
+if (is_file(__DIR__ . '/config.local.php')) {
+    require_once __DIR__ . '/config.local.php';
+}
+
 if (!defined('BASE_URL')) {
     // Nom du dossier avec espace et accent — encodage URL obligatoire
     define('BASE_URL', 'http://localhost/Systemegestionecole/public');

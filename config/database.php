@@ -1,11 +1,16 @@
 <?php
 // config/database.php — Connexion PDO centralisée
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'sge_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
+// Identifiants : config/config.local.php (voir config.local.example.php).
+// Les valeurs ci-dessous ne servent que de repli pour un poste de développement.
+if (is_file(__DIR__ . '/config.local.php')) {
+    require_once __DIR__ . '/config.local.php';
+}
+if (!defined('DB_HOST'))    define('DB_HOST', 'localhost');
+if (!defined('DB_NAME'))    define('DB_NAME', 'sge_db');
+if (!defined('DB_USER'))    define('DB_USER', 'root');
+if (!defined('DB_PASS'))    define('DB_PASS', '');
+if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 class Database {
     private static ?PDO $instance = null;
@@ -35,7 +40,7 @@ class Database {
     }
 
     /** À incrémenter à chaque nouvelle modification de schéma dans migrate(). */
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
 
     private static function currentSchemaVersion(PDO $db): int {
         try {
@@ -52,6 +57,16 @@ class Database {
         self::addColumnIfMissing($db, 'users', 'photo', 'VARCHAR(255) DEFAULT NULL');
         self::addColumnIfMissing($db, 'evenements', 'photo', 'VARCHAR(255) DEFAULT NULL');
         self::ensureTeacherModuleSchema($db);
+
+        // v2 : limitation des tentatives de connexion
+        $db->exec("CREATE TABLE IF NOT EXISTS `login_attempts` (
+            `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            `email_hash` CHAR(64) NOT NULL,
+            `ip` VARCHAR(45) NOT NULL,
+            `attempted_at` DATETIME NOT NULL,
+            INDEX `idx_email_time` (`email_hash`, `attempted_at`),
+            INDEX `idx_ip_time` (`ip`, `attempted_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
         $db->exec("CREATE TABLE IF NOT EXISTS `schema_meta` (
             `version` INT UNSIGNED NOT NULL,

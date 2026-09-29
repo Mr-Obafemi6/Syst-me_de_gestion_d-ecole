@@ -239,6 +239,16 @@ class ParametreController extends Controller {
             $errors['email'] = 'Cet email est déjà utilisé.';
         }
 
+        // Un administrateur ne peut ni se rétrograder ni se désactiver lui-même
+        if ($id === (int) AuthMiddleware::user()['id']) {
+            if ($data['role'] !== ROLE_ADMIN) {
+                $errors['role'] = 'Vous ne pouvez pas modifier votre propre rôle.';
+            }
+            if (empty($data['actif'])) {
+                $errors['actif'] = 'Vous ne pouvez pas désactiver votre propre compte.';
+            }
+        }
+
         if (!empty($errors)) {
             $data['id'] = $id;
             $this->render('parametres/formulaire_user', [

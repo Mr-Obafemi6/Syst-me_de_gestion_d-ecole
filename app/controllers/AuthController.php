@@ -50,17 +50,23 @@ class AuthController extends Controller {
             return;
         }
 
+        // Trop d'échecs récents pour ce compte ou cette adresse IP
+        if (LoginThrottle::isBlocked($email)) {
+            $this->renderLogin('Trop de tentatives échouées. Réessayez dans ' . LoginThrottle::windowMinutes() . ' minutes.');
+            return;
+        }
+
         // Tentative d'authentification
         $user = $this->userModel->authenticate($email, $password);
 
         if (!$user) {
-            // Délai anti-brute force
-            sleep(1);
+            LoginThrottle::recordFailure($email);
             $this->renderLogin('Email ou mot de passe incorrect.');
             return;
         }
 
         // Connexion réussie
+        LoginThrottle::clear($email);
         AuthMiddleware::login($user);
         $this->flash('success', 'Bienvenue, ' . htmlspecialchars($user['prenom']) . ' !');
         Router::redirect('dashboard');

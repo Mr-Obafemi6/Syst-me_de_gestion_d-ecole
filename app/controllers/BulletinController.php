@@ -30,7 +30,9 @@ class BulletinController extends Controller {
     public function index(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF, ROLE_PARENT, ROLE_ELEVE]);
 
-        $classes = $this->classeModel->classesActives();
+        $classes = AuthMiddleware::hasRole(ROLE_PROF)
+            ? $this->classeModel->classesPourProf((int) AuthMiddleware::user()['id'])
+            : $this->classeModel->classesActives();
 
         $this->render('bulletins/index', [
             'title'     => 'Bulletins',
@@ -56,6 +58,11 @@ class BulletinController extends Controller {
         if (!$eleve) {
             $this->flash('error', 'Élève introuvable.');
             Router::redirect('bulletins');
+        }
+
+        // Prof : uniquement les élèves de ses classes
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            AuthorizationService::getInstance()->requireTeacherClass((int) $eleve['classe_id']);
         }
 
         // Parent ne peut voir que son enfant
@@ -134,6 +141,9 @@ class BulletinController extends Controller {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
 
         $classeId = (int) $param;
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            AuthorizationService::getInstance()->requireTeacherClass($classeId);
+        }
         $periode  = (int) $this->get('periode', 1);
         $classe   = $this->classeModel->avecDetails($classeId);
 
@@ -180,6 +190,9 @@ class BulletinController extends Controller {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
 
         $classeId = (int) $param;
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            AuthorizationService::getInstance()->requireTeacherClass($classeId);
+        }
         $periode  = (int) $this->get('periode', 1);
         $classe   = $this->classeModel->avecDetails($classeId);
 
