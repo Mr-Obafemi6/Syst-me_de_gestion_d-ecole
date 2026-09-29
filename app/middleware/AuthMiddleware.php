@@ -67,6 +67,12 @@ class AuthMiddleware {
         return self::role() === $role;
     }
 
+    public static function can(string $permission): bool {
+        if (!self::isLoggedIn()) return false;
+        return class_exists('AuthorizationService')
+            && AuthorizationService::getInstance()->hasPermission($permission);
+    }
+
     /**
      * Connecte un utilisateur (stocke en session)
      */

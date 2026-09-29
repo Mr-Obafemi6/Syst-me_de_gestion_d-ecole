@@ -23,11 +23,16 @@ class AbsenceController extends Controller {
     // ─────────────────────────────────────────
     public function index(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('attendance.view');
 
         $page      = max(1, (int) $this->get('page', 1));
         $classeId  = (int) $this->get('classe', 0);
         $eleveId   = (int) $this->get('eleve', 0);
         $justifiee = $this->get('justifiee', '');
+
+        if (AuthMiddleware::hasRole(ROLE_PROF) && $classeId > 0) {
+            AuthorizationService::getInstance()->requireTeacherClass($classeId);
+        }
 
         $pagination      = $this->absenceModel->listerAvecDetails($page, $classeId, $eleveId, $justifiee);
         $classes         = $this->classeModel->toutesLesClasses();
@@ -53,9 +58,13 @@ class AbsenceController extends Controller {
     // ─────────────────────────────────────────
     public function ajouter(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('attendance.create');
 
         $eleveId = (int) $this->get('eleve', 0);
         $eleve   = $eleveId ? $this->eleveModel->ficheComplete($eleveId) : null;
+        if (AuthMiddleware::hasRole(ROLE_PROF) && $eleve) {
+            AuthorizationService::getInstance()->requireTeacherClass((int) $eleve['classe_id']);
+        }
         $classes = $this->classeModel->toutesLesClasses();
 
         $this->render('absences/formulaire', [
@@ -75,12 +84,16 @@ class AbsenceController extends Controller {
     // ─────────────────────────────────────────
     public function store(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('attendance.create');
         $this->requireMethod('POST');
         $this->validateCsrf();
 
         $user    = AuthMiddleware::user();
         $eleveId = (int) $this->post('eleve_id', 0);
         $eleve   = $eleveId ? $this->eleveModel->ficheComplete($eleveId) : null;
+        if (AuthMiddleware::hasRole(ROLE_PROF) && $eleve) {
+            AuthorizationService::getInstance()->requireTeacherClass((int) $eleve['classe_id']);
+        }
 
         $data = [
             'eleve_id'     => $eleveId,
@@ -129,11 +142,16 @@ class AbsenceController extends Controller {
     // ─────────────────────────────────────────
     public function justifier(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('attendance.edit');
         $this->requireMethod('POST');
         $this->validateCsrf();
 
         $id = (int) $param;
         $absence = $this->absenceModel->findById($id);
+        if (AuthMiddleware::hasRole(ROLE_PROF) && $absence) {
+            $eleve = $this->eleveModel->ficheComplete((int) $absence['eleve_id']);
+            AuthorizationService::getInstance()->requireTeacherClass((int) ($eleve['classe_id'] ?? 0));
+        }
         $this->absenceModel->update($id, ['justifiee' => 1]);
 
         // Dispatcher notification
@@ -151,12 +169,17 @@ class AbsenceController extends Controller {
     // ─────────────────────────────────────────
     public function supprimer(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('attendance.delete');
         $this->requireMethod('POST');
         $this->validateCsrf();
 
         $id      = (int) $param;
         $absence = $this->absenceModel->findById($id);
         $eleveId = $absence['eleve_id'] ?? 0;
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            $eleve = $this->eleveModel->ficheComplete((int) $eleveId);
+            AuthorizationService::getInstance()->requireTeacherClass((int) ($eleve['classe_id'] ?? 0));
+        }
 
         $this->absenceModel->delete($id);
 
@@ -182,6 +205,11 @@ class AbsenceController extends Controller {
         if (!$eleve) {
             $this->flash('error', 'Élève introuvable.');
             Router::redirect('absences');
+        }
+
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            AuthorizationService::getInstance()->requirePermission('attendance.view');
+            AuthorizationService::getInstance()->requireTeacherClass((int) $eleve['classe_id']);
         }
 
         // Parent : uniquement son enfant
@@ -220,6 +248,7 @@ class AbsenceController extends Controller {
     // ─────────────────────────────────────────
     public function classe(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('attendance.view');
 
         $id     = (int) $param;
         $classe = $this->classeModel->avecDetails($id);
@@ -227,6 +256,10 @@ class AbsenceController extends Controller {
         if (!$classe) {
             $this->flash('error', 'Classe introuvable.');
             Router::redirect('absences');
+        }
+
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            AuthorizationService::getInstance()->requireTeacherClass($id);
         }
 
         $stats = $this->absenceModel->statsParClasse($id);

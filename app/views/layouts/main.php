@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($title ?? 'SGE') ?> — SGE</title>
+    <title><?= htmlspecialchars($title ?? 'SGE') ?> — SGE (Systemegestionecol)</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/vendor/bootstrap-icons/css/bootstrap-icons.min.css">
     <!-- CSS principal -->
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/app.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/app.css?v=<?= filemtime(ROOT_PATH . '/public/assets/css/app.css') ?>">
 </head>
 <body>
 <div id="sidebar-overlay"></div>
@@ -21,162 +21,210 @@
 
     <!-- ===== SIDEBAR ===== -->
     <nav id="sidebar">
-        <!-- Logo / Nom école -->
-        <div class="sidebar-brand">
-            <?php
-                $logoToShow = !empty($app_logo) ? $app_logo : null;
-                $secondLogoPath = defined('DEFAULT_SECOND_LOGO') ? DEFAULT_SECOND_LOGO : null;
-                $secondLogoToShow = ($secondLogoPath && file_exists(ROOT_PATH . '/public/' . $secondLogoPath)) ? $secondLogoPath : null;
-            ?>
-            <?php if (!empty($logoToShow)): ?>
-                <img src="<?= BASE_URL ?>/<?= htmlspecialchars($logoToShow) ?>" alt="Logo">
-            <?php else: ?>
-                <i class="bi bi-mortarboard-fill"></i>
-            <?php endif; ?>
-            <span><?= htmlspecialchars($app_name ?? 'SGE') ?></span>
-            <?php if (!empty($secondLogoToShow)): ?>
-                <img src="<?= BASE_URL ?>/<?= htmlspecialchars($secondLogoToShow) ?>" alt="Logo secondaire" style="margin-left:8px;">
-            <?php endif; ?>
+        <?php
+            $sidebarAuth = AuthorizationService::getInstance();
+            $hasSettings = $sidebarAuth->hasPermission('settings.view');
+            $hasDocumentation = false;
+            $hasSupport = false;
+            $activeYear = trim((string) ($active_school_year ?? ''));
+            $schoolLogo = !empty($app_logo) ? $app_logo : null;
+            $userFullName = trim((($user['prenom'] ?? '') . ' ' . ($user['nom'] ?? '')));
+            $userRole = ucfirst($user['role'] ?? '');
+        ?>
+
+        <div class="sidebar-header">
+            <span>SystemeGestionEcole</span>
         </div>
 
-        <!-- Navigation -->
-        <ul class="sidebar-nav">
-            <li class="nav-label">PRINCIPAL</li>
+        <div class="sidebar-establishment">
+            <button type="button" class="sidebar-establishment-toggle" aria-expanded="false" aria-controls="sidebar-user-menu">
+                <div class="sidebar-establishment-main">
+                    <?php if (!empty($schoolLogo)): ?>
+                        <img src="<?= BASE_URL ?>/<?= htmlspecialchars($schoolLogo) ?>" alt="Logo établissement" class="sidebar-establishment-logo">
+                    <?php else: ?>
+                        <div class="sidebar-establishment-logo icon-shell">
+                            <i class="bi bi-mortarboard-fill"></i>
+                        </div>
+                    <?php endif; ?>
+                    <div class="sidebar-establishment-text">
+                        <div class="sidebar-establishment-name"><?= htmlspecialchars($app_name ?? 'SGE') ?></div>
+                        <?php if (!empty($activeYear)): ?>
+                            <div class="sidebar-establishment-detail"><?= htmlspecialchars($activeYear) ?></div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <span class="sidebar-establishment-chevron"><i class="bi bi-chevron-down"></i></span>
+            </button>
 
-            <li class="<?= Router::is('dashboard') ? 'active' : '' ?>">
-                <a href="<?= Router::url('dashboard') ?>">
-                    <i class="bi bi-speedometer2"></i> Tableau de bord
+            <div id="sidebar-user-menu" class="sidebar-user-menu" aria-hidden="true">
+                <div class="sidebar-user-summary">
+                    <?php if (!empty($current_user_photo)): ?>
+                        <img src="<?= BASE_URL ?>/<?= htmlspecialchars($current_user_photo) ?>" alt="Photo profil" class="sidebar-user-avatar">
+                    <?php else: ?>
+                        <div class="sidebar-user-avatar initials"><?= htmlspecialchars($current_user_initials ?? 'SG') ?></div>
+                    <?php endif; ?>
+                    <div class="sidebar-user-meta">
+                        <span class="sidebar-user-name"><?= htmlspecialchars($userFullName ?: 'Utilisateur') ?></span>
+                        <span class="sidebar-user-role"><?= htmlspecialchars($userRole ?: 'Utilisateur') ?></span>
+                    </div>
+                </div>
+
+                <a href="<?= Router::url('auth/profil') ?>" class="sidebar-user-link">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Profil</span>
                 </a>
-            </li>
 
-            <?php if (AuthMiddleware::hasRole(ROLE_ADMIN) || AuthMiddleware::hasRole(ROLE_PROF)): ?>
-            <li class="nav-label">SCOLARITÉ</li>
-
-            <li class="<?= Router::is('eleves') ? 'active' : '' ?>">
-                <a href="<?= Router::url('eleves') ?>">
-                    <i class="bi bi-people-fill"></i> Élèves
-                </a>
-            </li>
-
-            <li class="nav-label">GESTION ACADÉMIQUE</li>
-
-            <li class="<?= Router::is('classes') ? 'active' : '' ?>">
-                <a href="<?= Router::url('classes') ?>">
-                    <i class="bi bi-building"></i> Classes
-                </a>
-            </li>
-
-            <li class="<?= Router::is('matieres') ? 'active' : '' ?>">
-                <a href="<?= Router::url('matieres') ?>">
-                    <i class="bi bi-journal-bookmark"></i> Matières
-                </a>
-            </li>
-
-            <li class="<?= Router::is('notes') ? 'active' : '' ?>">
-                <a href="<?= Router::url('notes') ?>">
-                    <i class="bi bi-pencil-square"></i> Notes
-                </a>
-            </li>
-
-            <li class="<?= Router::is('bulletins') ? 'active' : '' ?>">
-                <a href="<?= Router::url('bulletins') ?>">
-                    <i class="bi bi-file-earmark-text"></i> Bulletins
-                </a>
-            </li>
-
-            <li class="<?= Router::is('absences') ? 'active' : '' ?>">
-                <a href="<?= Router::url('absences') ?>">
-                    <i class="bi bi-calendar-x"></i> Absences
-                </a>
-            </li>
-
-            <li class="<?= Router::is('evenements') ? 'active' : '' ?>">
-                <a href="<?= Router::url('evenements') ?>">
-                    <i class="bi bi-calendar-event"></i> Événements
-                </a>
-            </li>
-
-            <li class="<?= Router::is('export') ? 'active' : '' ?>">
-                <a href="<?= Router::url('export') ?>">
-                    <i class="bi bi-download"></i> Export CSV
-                </a>
-            </li>
-            <li class="<?= Router::is('export') && ($_GET['url'] ?? '') !== 'export' ? 'active' : '' ?>">
-                <a href="<?= Router::url('export/rapports') ?>">
-                    <i class="bi bi-file-earmark-text-fill"></i> Rapports
-                </a>
-            </li>
-            <?php endif; ?>
-
-            <?php if (AuthMiddleware::hasRole(ROLE_ADMIN)): ?>
-            <li class="nav-label">FINANCES</li>
-
-            <li class="<?= Router::is('paiements') ? 'active' : '' ?>">
-                <a href="<?= Router::url('paiements') ?>">
-                    <i class="bi bi-cash-coin"></i> Paiements
-                </a>
-            </li>
-
-            <li class="nav-label">ADMINISTRATION</li>
-
-            <li class="<?= Router::is('parametres') ? 'active' : '' ?>">
-                <a href="<?= Router::url('parametres') ?>">
-                    <i class="bi bi-gear-fill"></i> Paramètres
-                </a>
-            </li>
-            <?php endif; ?>
-
-            <?php if (AuthMiddleware::hasRole(ROLE_PARENT)): ?>
-            <li class="nav-label">MON ESPACE</li>
-
-            <li class="<?= Router::is('espace-parent') ? 'active' : '' ?>">
-                <a href="<?= Router::url('espace-parent') ?>">
-                    <i class="bi bi-people-fill"></i> Mes enfants
-                </a>
-            </li>
-            <li class="<?= Router::is('notifications') ? 'active' : '' ?>">
-                <a href="<?= Router::url('notifications') ?>">
-                    <i class="bi bi-bell-fill"></i> Notifications
-                </a>
-            </li>
-            <?php endif; ?>
-
-            <?php if (AuthMiddleware::hasRole(ROLE_ELEVE)): ?>
-            <li class="nav-label">MON ESPACE</li>
-
-            <li class="<?= Router::is('espace-eleve') ? 'active' : '' ?>">
-                <a href="<?= Router::url('espace-eleve') ?>">
-                    <i class="bi bi-house-door-fill"></i> Mon profil
-                </a>
-            </li>
-            <li class="<?= Router::is('espace-eleve') && ($_GET['url'] ?? '') === 'espace-eleve/paiements' ? 'active' : '' ?>">
-                <a href="<?= Router::url('espace-eleve/paiements') ?>">
-                    <i class="bi bi-cash-coin"></i> Mes paiements
-                </a>
-            </li>
-            <li class="<?= Router::is('notifications') ? 'active' : '' ?>">
-                <a href="<?= Router::url('notifications') ?>">
-                    <i class="bi bi-bell-fill"></i> Notifications
-                </a>
-            </li>
-            <?php endif; ?>
-        </ul>
-
-        <!-- Infos utilisateur bas de sidebar -->
-        <div class="sidebar-footer">
-            <a href="<?= Router::url('auth/profil') ?>" class="sidebar-user text-decoration-none">
-                <?php if (!empty($current_user_photo)): ?>
-                    <img src="<?= BASE_URL ?>/<?= htmlspecialchars($current_user_photo) ?>" alt="Profil" class="rounded-circle" style="width:38px;height:38px;object-fit:cover;">
+                <?php if ($hasDocumentation): ?>
+                    <a href="<?= Router::url('documentation') ?>" class="sidebar-user-link">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <span>Documentation</span>
+                    </a>
                 <?php else: ?>
-                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:38px;height:38px;font-size:.9rem;font-weight:700;">
-                        <?= htmlspecialchars($current_user_initials ?? 'SG') ?>
+                    <div class="sidebar-user-link disabled" aria-disabled="true">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <span>Documentation</span>
+                        <small class="sidebar-user-note">Aucune route existante</small>
                     </div>
                 <?php endif; ?>
-                <div>
-                    <div class="user-name"><?= htmlspecialchars(($user['prenom'] ?? '') . ' ' . ($user['nom'] ?? '')) ?></div>
-                    <div class="user-role"><?= htmlspecialchars(ucfirst($user['role'] ?? '')) ?></div>
-                </div>
-            </a>
+
+                <?php if ($hasSupport): ?>
+                    <a href="<?= Router::url('support') ?>" class="sidebar-user-link">
+                        <i class="bi bi-life-preserver"></i>
+                        <span>Support</span>
+                    </a>
+                <?php else: ?>
+                    <div class="sidebar-user-link disabled" aria-disabled="true">
+                        <i class="bi bi-life-preserver"></i>
+                        <span>Support</span>
+                        <small class="sidebar-user-note">Aucune route existante</small>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($hasSettings): ?>
+                    <a href="<?= Router::url('parametres') ?>" class="sidebar-user-link">
+                        <i class="bi bi-gear"></i>
+                        <span>Paramètres</span>
+                    </a>
+                <?php endif; ?>
+
+                <a href="<?= Router::url('auth/logout') ?>" class="sidebar-user-link danger">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Déconnexion</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="sidebar-menu-scroll">
+            <ul class="sidebar-nav">
+                <?php if ($sidebarAuth->hasPermission('dashboard.view')): ?>
+                <li class="nav-label">PRINCIPAL</li>
+                <li class="<?= Router::is('dashboard') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('dashboard') ?>" title="Tableau de bord">
+                        <i class="bi bi-speedometer2"></i><span>Tableau de bord</span>
+                    </a>
+                </li>
+                <?php endif; ?>
+
+                <?php if ($sidebarAuth->hasPermission('students.view') || $sidebarAuth->hasPermission('classes.view') || $sidebarAuth->hasPermission('subjects.view')): ?>
+                <li class="nav-label">SCOLARITÉ</li>
+                <?php if ($sidebarAuth->hasPermission('students.view')): ?><li class="<?= Router::is('eleves') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('eleves') ?>" title="Élèves"><i class="bi bi-people-fill"></i><span>Élèves</span></a>
+                </li><?php endif; ?>
+                <?php if ($sidebarAuth->hasPermission('classes.view')): ?><li class="<?= Router::is('classes') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('classes') ?>" title="Classes"><i class="bi bi-building"></i><span>Classes</span></a>
+                </li><?php endif; ?>
+                <?php if ($sidebarAuth->hasPermission('subjects.view')): ?><li class="<?= Router::is('matieres') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('matieres') ?>" title="Matières"><i class="bi bi-journal-bookmark"></i><span>Matières</span></a>
+                </li><?php endif; ?>
+                <?php endif; ?>
+
+                <?php if ($sidebarAuth->hasPermission('grades.view') || $sidebarAuth->hasPermission('report_cards.view') || $sidebarAuth->hasPermission('attendance.view')): ?>
+                <li class="nav-label">ÉVALUATION</li>
+                <?php if ($sidebarAuth->hasPermission('grades.view')): ?><li class="<?= Router::is('notes') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('notes') ?>" title="Notes"><i class="bi bi-pencil-square"></i><span>Notes</span></a>
+                </li><?php endif; ?>
+                <?php if ($sidebarAuth->hasPermission('report_cards.view')): ?><li class="<?= Router::is('bulletins') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('bulletins') ?>" title="Bulletins"><i class="bi bi-file-earmark-text"></i><span>Bulletins</span></a>
+                </li><?php endif; ?>
+                <?php if ($sidebarAuth->hasPermission('attendance.view')): ?><li class="<?= Router::is('absences') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('absences') ?>" title="Absences"><i class="bi bi-calendar-x"></i><span>Absences</span></a>
+                </li><?php endif; ?>
+                <?php endif; ?>
+
+                <?php if ($sidebarAuth->hasPermission('events.view')): ?>
+                <li class="nav-label">ORGANISATION</li>
+                <li class="<?= Router::is('evenements') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('evenements') ?>" title="Événements"><i class="bi bi-calendar-event"></i><span>Événements</span></a>
+                </li>
+                <?php endif; ?>
+
+                <?php if ($sidebarAuth->hasPermission('notifications.view') || AuthMiddleware::hasRole(ROLE_PARENT) || AuthMiddleware::hasRole(ROLE_ELEVE)): ?>
+                <li class="nav-label">COMMUNICATION</li>
+                <li class="<?= Router::is('notifications') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('notifications') ?>" title="Notifications"><i class="bi bi-bell-fill"></i><span>Notifications</span></a>
+                </li>
+                <?php endif; ?>
+
+                <?php if ($sidebarAuth->hasPermission('finance.view')): ?>
+                <li class="nav-label">FINANCES</li>
+                <li class="<?= Router::is('paiements') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('paiements') ?>" title="Paiements"><i class="bi bi-cash-coin"></i><span>Paiements</span></a>
+                </li>
+                <?php endif; ?>
+
+                <?php if ($sidebarAuth->hasPermission('report_cards.export')): ?>
+                <li class="nav-label">RAPPORTS</li>
+                <li class="<?= Router::is('export') && ($_GET['url'] ?? '') === 'export' ? 'active' : '' ?>">
+                    <a href="<?= Router::url('export') ?>" title="Export CSV"><i class="bi bi-download"></i><span>Export CSV</span></a>
+                </li>
+                <li class="<?= Router::is('export') && ($_GET['url'] ?? '') !== 'export' ? 'active' : '' ?>">
+                    <a href="<?= Router::url('export/rapports') ?>" title="Rapports"><i class="bi bi-file-earmark-text-fill"></i><span>Rapports</span></a>
+                </li>
+                <?php endif; ?>
+
+                <?php if ($sidebarAuth->hasPermission('teachers.view') || $sidebarAuth->hasPermission('schedule.view') || $sidebarAuth->hasPermission('permissions.view') || $sidebarAuth->hasPermission('assignments.view')): ?>
+                <li class="nav-label">ADMINISTRATION</li>
+                <?php if ($sidebarAuth->hasPermission('teachers.view')): ?><li class="<?= Router::is('enseignants') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('enseignants') ?>" title="Enseignants"><i class="bi bi-person-badge-fill"></i><span>Enseignants</span></a>
+                </li><?php endif; ?>
+                <?php if ($sidebarAuth->hasPermission('schedule.view')): ?><li class="<?= Router::is('emplois-du-temps') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('emplois-du-temps') ?>" title="Emploi du temps"><i class="bi bi-calendar3"></i><span>Emploi du temps</span></a>
+                </li><?php endif; ?>
+                <?php if ($sidebarAuth->hasPermission('permissions.view')): ?><li class="<?= Router::is('permissions') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('permissions') ?>" title="Rôles &amp; permissions"><i class="bi bi-shield-lock-fill"></i><span>Rôles &amp; permissions</span></a>
+                </li><?php endif; ?>
+                <?php if ($sidebarAuth->hasPermission('assignments.view')): ?><li class="<?= Router::is('affectations') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('affectations') ?>" title="Affectations enseignants"><i class="bi bi-person-workspace"></i><span>Affectations enseignants</span></a>
+                </li><?php endif; ?>
+                <?php endif; ?>
+
+                <?php if ($sidebarAuth->hasPermission('documentation.view') || $sidebarAuth->hasPermission('schedule.view')): ?>
+                <li class="nav-label">OUTILS</li>
+                <?php if ($sidebarAuth->hasPermission('documentation.view')): ?><li class="<?= Router::is('documentation') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('documentation') ?>" title="Documentation"><i class="bi bi-journal-text"></i><span>Documentation</span></a>
+                </li><?php endif; ?>
+                <?php endif; ?>
+
+                <?php if (AuthMiddleware::hasRole(ROLE_PARENT)): ?>
+                <li class="nav-label">MON ESPACE</li>
+                <li class="<?= Router::is('espace-parent') ? 'active' : '' ?>">
+                    <a href="<?= Router::url('espace-parent') ?>" title="Mes enfants"><i class="bi bi-people-fill"></i><span>Mes enfants</span></a>
+                </li>
+                <li class="<?= Router::is('espace-parent') && ($_GET['url'] ?? '') === 'espace-parent/paiements' ? 'active' : '' ?>">
+                    <a href="<?= Router::url('espace-parent/paiements') ?>" title="Mes paiements"><i class="bi bi-cash-coin"></i><span>Mes paiements</span></a>
+                </li>
+                <?php endif; ?>
+
+                <?php if (AuthMiddleware::hasRole(ROLE_ELEVE)): ?>
+                <li class="nav-label">MON ESPACE</li>
+                <li class="<?= Router::is('espace-eleve') && ($_GET['url'] ?? '') === 'espace-eleve' ? 'active' : '' ?>">
+                    <a href="<?= Router::url('espace-eleve') ?>" title="Mon profil"><i class="bi bi-house-door-fill"></i><span>Mon profil</span></a>
+                </li>
+                <li class="<?= Router::is('espace-eleve') && ($_GET['url'] ?? '') === 'espace-eleve/paiements' ? 'active' : '' ?>">
+                    <a href="<?= Router::url('espace-eleve/paiements') ?>" title="Mes paiements"><i class="bi bi-cash-coin"></i><span>Mes paiements</span></a>
+                </li>
+                <?php endif; ?>
+            </ul>
         </div>
     </nav>
     <!-- ===== FIN SIDEBAR ===== -->
@@ -329,6 +377,10 @@ if (searchInput) {
     });
 }
 
+function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 async function lancerRecherche(q) {
     try {
         const data = await fetchJSON('<?= BASE_URL ?>/recherche/api?q=' + encodeURIComponent(q));
@@ -340,7 +392,7 @@ async function lancerRecherche(q) {
 
 function afficherResultats(results, q) {
     if (!results || results.length === 0) {
-        searchDropdown.innerHTML = '<div class="p-3 text-muted text-center small">Aucun résultat pour "' + q + '"</div>';
+        searchDropdown.innerHTML = '<div class="p-3 text-muted text-center small">Aucun résultat pour "' + esc(q) + '"</div>';
         searchDropdown.style.display = 'block';
         return;
     }
@@ -349,14 +401,14 @@ function afficherResultats(results, q) {
     let html = '';
     results.forEach(r => {
         html += `
-        <a href="${r.url}" class="d-flex align-items-center gap-2 px-3 py-2 text-decoration-none
+        <a href="${esc(r.url)}" class="d-flex align-items-center gap-2 px-3 py-2 text-decoration-none
                   border-bottom text-dark" style="transition:background .15s"
            onmouseover="this.style.background='#e8f0fb'"
            onmouseout="this.style.background=''">
-            <i class="bi bi-${r.icon} ${iconColors[r.type] || 'text-secondary'} fs-5"></i>
+            <i class="bi bi-${esc(r.icon)} ${iconColors[r.type] || 'text-secondary'} fs-5"></i>
             <div class="flex-fill">
-                <div class="small fw-semibold">${r.label}</div>
-                <div style="font-size:.75rem" class="text-muted">${r.sub}</div>
+                <div class="small fw-semibold">${esc(r.label)}</div>
+                <div style="font-size:.75rem" class="text-muted">${esc(r.sub)}</div>
             </div>
         </a>`;
     });
@@ -395,8 +447,8 @@ async function chargerNotifications() {
         }
         notifBody.innerHTML = recent.map(n => `
             <div class="notif-item">
-                <div class="notif-item-title">${n.title}</div>
-                <div class="notif-item-body">${n.body}</div>
+                <div class="notif-item-title">${esc(n.title)}</div>
+                <div class="notif-item-body">${esc(n.body)}</div>
                 <div class="notif-item-time">${timeAgo(n.created_at)}</div>
             </div>
         `).join('');

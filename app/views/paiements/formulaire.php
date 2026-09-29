@@ -158,7 +158,10 @@
             <hr class="my-4">
 
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-success" <?= !$annee ? 'disabled' : '' ?>>
+                <button type="submit" class="btn btn-success"
+                        data-loading-message="Enregistrement du paiement en cours..."
+                        data-loading-label="Enregistrement..."
+                        <?= !$annee ? 'disabled' : '' ?>>
                     <i class="bi bi-check-circle me-1"></i> Enregistrer le paiement
                 </button>
                 <a href="<?= Router::url('paiements') ?>" class="btn btn-outline-secondary">

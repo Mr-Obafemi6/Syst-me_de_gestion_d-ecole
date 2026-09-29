@@ -257,6 +257,7 @@ class ParametreController extends Controller {
             'prenom' => $data['prenom'],
             'email'  => $data['email'],
             'role'   => $data['role'],
+            'role_id' => $this->userModel->roleIdFromCode($data['role']),
             'actif'  => (int) $data['actif'],
         ];
 
@@ -343,7 +344,7 @@ class ParametreController extends Controller {
         if (empty($data['prenom'])) $errors['prenom'] = 'Le prénom est obligatoire.';
         if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL))
             $errors['email'] = 'Email invalide.';
-        if (!in_array($data['role'], ['admin', 'professeur', 'parent']))
+        if (!in_array($data['role'], ['admin', 'directeur', 'professeur', 'secretaire', 'parent', 'eleve'], true))
             $errors['role'] = 'Rôle invalide.';
         return $errors;
     }

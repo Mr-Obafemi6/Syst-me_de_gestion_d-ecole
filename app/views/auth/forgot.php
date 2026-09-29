@@ -11,11 +11,7 @@
         <?php if ($sent): ?>
         <div class="alert alert-success">
             <i class="bi bi-check-circle me-1"></i>
-            Lien de réinitialisation généré.<br>
-            <strong>Mode développement — lien direct :</strong><br>
-            <a href="<?= htmlspecialchars($reset_link ?? '#') ?>" class="small">
-                <?= htmlspecialchars($reset_link ?? '') ?>
-            </a>
+            Si un compte correspond à cette adresse, un email contenant le lien de réinitialisation vient d'être envoyé.
         </div>
         <a href="<?= Router::url('auth/login') ?>" class="btn-auth d-block text-center mt-3"
            style="text-decoration:none; padding:11px;">

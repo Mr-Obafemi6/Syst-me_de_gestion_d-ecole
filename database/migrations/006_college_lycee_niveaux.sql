@@ -27,7 +27,7 @@ INSERT INTO `niveaux` (`nom`, `ordre`, `cycle`, `statut`) VALUES
 ('5ème',          2,  'college', 1),
 ('4ème',          3,  'college', 1),
 ('3ème',          4,  'college', 1),
-('2nde S/D',      5,  'lycee',   1),
+('2nde S',        5,  'lycee',   1),
 ('2nde A4',       6,  'lycee',   1),
 ('1ère D',        7,  'lycee',   1),
 ('1ère A4',       8,  'lycee',   1),
@@ -49,7 +49,7 @@ INSERT INTO `matieres` (`nom`, `code`, `description`, `coefficient`, `statut`) V
 ('Espagnol',              'ESP',  'Espagnol',                        2.00, 1),
 ('Allemand',              'ALL',  'Allemand',                        2.00, 1),
 ('Informatique',          'INFO', 'Informatique',                    1.00, 1),
-('Éducation civique',     'EC',   'Éducation civique',               1.00, 1);
+('Éducation civique Morale',     'ECM',   'Éducation civique',               1.00, 1);
 
 -- Classes exemple pour l'année active
 INSERT INTO `classes` (`niveau_id`, `nom`, `niveau`, `annee_scolaire_id`, `effectif_maximum`, `statut`)
@@ -92,13 +92,13 @@ JOIN (
     SELECT '3ème', 'Histoire-Géographie', 2 UNION ALL
     SELECT '3ème', 'Anglais', 2 UNION ALL
     SELECT '3ème', 'EPS', 1 UNION ALL
-    SELECT '2nde S/D', 'Français', 3 UNION ALL
-    SELECT '2nde S/D', 'Mathématiques', 4 UNION ALL
-    SELECT '2nde S/D', 'Physique-Chimie', 3 UNION ALL
-    SELECT '2nde S/D', 'SVT', 3 UNION ALL
-    SELECT '2nde S/D', 'Histoire-Géographie', 2 UNION ALL
-    SELECT '2nde S/D', 'Anglais', 2 UNION ALL
-    SELECT '2nde S/D', 'EPS', 1 UNION ALL
+    SELECT '2nde S', 'Français', 3 UNION ALL
+    SELECT '2nde S', 'Mathématiques', 4 UNION ALL
+    SELECT '2nde S', 'Physique-Chimie', 3 UNION ALL
+    SELECT '2nde S', 'SVT', 3 UNION ALL
+    SELECT '2nde S', 'Histoire-Géographie', 2 UNION ALL
+    SELECT '2nde S', 'Anglais', 2 UNION ALL
+    SELECT '2nde S', 'EPS', 1 UNION ALL
     SELECT '2nde A4', 'Français', 4 UNION ALL
     SELECT '2nde A4', 'Mathématiques', 3 UNION ALL
     SELECT '2nde A4', 'Histoire-Géographie', 3 UNION ALL

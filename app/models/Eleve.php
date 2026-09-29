@@ -9,7 +9,7 @@ class Eleve extends Model {
     /**
      * Liste paginée avec nom de classe
      */
-    public function listerAvecClasse(int $page = 1, string $recherche = '', int $classeId = 0): array {
+    public function listerAvecClasse(int $page = 1, string $recherche = '', int $classeId = 0, ?int $teacherId = null): array {
         $perPage = ITEMS_PER_PAGE;
         $offset  = ($page - 1) * $perPage;
 
@@ -28,12 +28,16 @@ class Eleve extends Model {
             $where[]  = "e.classe_id = ?";
             $params[] = $classeId;
         }
+        if ($teacherId !== null) {
+            $where[] = "EXISTS (SELECT 1 FROM teacher_assignments ta WHERE ta.teacher_id = ? AND ta.class_id = e.classe_id AND ta.school_year_id = c.annee_scolaire_id AND ta.status = 1)";
+            $params[] = $teacherId;
+        }
 
         $whereSQL = 'WHERE ' . implode(' AND ', $where);
 
         // Compter le total
         $total = (int) $this->queryScalar(
-            "SELECT COUNT(*) FROM `eleves` e $whereSQL",
+            "SELECT COUNT(*) FROM `eleves` e LEFT JOIN `classes` c ON c.id = e.classe_id $whereSQL",
             $params
         );
 

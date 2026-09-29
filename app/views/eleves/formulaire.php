@@ -194,7 +194,7 @@
             <hr class="my-4">
 
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" data-loading-message="Enregistrement en cours..." data-loading-label="<?= $edit ? 'Modification...' : 'Enregistrement...' ?>">
                     <i class="bi bi-check-circle me-1"></i>
                     <?= $edit ? 'Enregistrer les modifications' : 'Ajouter l\'élève' ?>
                 </button>

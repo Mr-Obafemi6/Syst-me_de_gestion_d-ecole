@@ -74,7 +74,9 @@
 
             <hr class="my-4">
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary"
+                        data-loading-message="Ajout de l'événement en cours..."
+                        data-loading-label="Ajout en cours...">
                     <i class="bi bi-check-circle me-1"></i> Ajouter à l'agenda
                 </button>
                 <a href="<?= Router::url('evenements') ?>" class="btn btn-outline-secondary">

@@ -58,7 +58,7 @@
             <option value="">Toutes les classes</option>
             <?php foreach ($classes as $cl): ?>
             <option value="<?= $cl['id'] ?>" <?= $p['classe_id'] == $cl['id'] ? 'selected' : '' ?>>
-                <?= htmlspecialchars($cl['nom']) ?>
+                <?= htmlspecialchars($cl['niveau']) ?>
             </option>
             <?php endforeach; ?>
         </select>

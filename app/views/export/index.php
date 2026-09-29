@@ -20,7 +20,7 @@
                             <option value="0">Toutes les classes</option>
                             <?php foreach ($classes as $cl): ?>
                             <option value="<?= $cl['id'] ?>">
-                                <?= htmlspecialchars($cl['nom']) ?>
+                                <?= htmlspecialchars($cl['niveau']) ?>
                             </option>
                             <?php endforeach; ?>
                         </select>
@@ -55,7 +55,7 @@
                             <option value="">-- Choisir --</option>
                             <?php foreach ($classes as $cl): ?>
                             <option value="<?= $cl['id'] ?>">
-                                <?= htmlspecialchars($cl['nom']) ?>
+                                <?= htmlspecialchars($cl['niveau']) ?>
                             </option>
                             <?php endforeach; ?>
                         </select>
@@ -118,7 +118,7 @@
     </a>
 </div>
 
-<!-- Guide d'utilisation -->
+<!-- Guide d'utilisation-->
 <div class="card mt-4">
     <div class="card-header">
         <i class="bi bi-question-circle me-1 text-primary"></i> Comment ouvrir le fichier CSV dans Excel ?
@@ -132,4 +132,4 @@
             <li>Cliquez <strong>Terminer</strong> — les données s'affichent correctement avec les accents.</li>
         </ol>
     </div>
-</div>
+</div> 

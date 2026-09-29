@@ -14,6 +14,8 @@
         public function index(?string $param = null): void {
             AuthMiddleware::requireAuth();
 
+            $authorization = AuthorizationService::getInstance();
+
             // Les comptes parents et élèves ont leur propre espace,
             // distinct du tableau de bord de pilotage de l'établissement.
             if (AuthMiddleware::hasRole(ROLE_PARENT)) {
@@ -21,6 +23,20 @@
             }
             if (AuthMiddleware::hasRole(ROLE_ELEVE)) {
                 Router::redirect('espace-eleve');
+            }
+            if (AuthMiddleware::hasRole(ROLE_PROF)) {
+                $this->render('dashboard/enseignant', [
+                    'title' => 'Tableau de bord enseignant',
+                    'pageTitle' => 'Tableau de bord enseignant',
+                    'user' => AuthMiddleware::user(),
+                    'flash' => $this->getFlash(),
+                    'csrf_token' => $this->generateCsrfToken(),
+                    'canEvents' => $authorization->hasPermission('events.view'),
+                    'canGrades' => $authorization->hasPermission('grades.view'),
+                    'canAttendance' => $authorization->hasPermission('attendance.view'),
+                    'canReports' => $authorization->hasPermission('report_cards.view'),
+                ]);
+                return;
             }
 
             $user         = AuthMiddleware::user();

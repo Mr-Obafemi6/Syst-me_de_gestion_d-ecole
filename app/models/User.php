@@ -33,7 +33,18 @@ class User extends Model {
         $data['password_hash'] = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => 12]);
         $data['email']         = strtolower(trim($data['email']));
         unset($data['password']);
+        if (!empty($data['role']) && !isset($data['role_id'])) {
+            $data['role_id'] = $this->roleIdFromCode($data['role']);
+        }
         return $this->insert($data);
+    }
+
+    /**
+     * Retourne roles.id pour un code de rôle (garde users.role et users.role_id cohérents)
+     */
+    public function roleIdFromCode(string $code): ?int {
+        $id = $this->queryScalar("SELECT `id` FROM `roles` WHERE `code` = ? LIMIT 1", [$code]);
+        return $id !== false ? (int) $id : null;
     }
 
     /**
@@ -66,7 +77,7 @@ class User extends Model {
         $expiry = date('Y-m-d H:i:s', time() + 3600); // 1h
 
         $this->update($user['id'], [
-            'reset_token'  => $token,
+            'reset_token'  => hash('sha256', $token), // seul le hash est stocké
             'reset_expiry' => $expiry,
         ]);
         return $token;
@@ -82,7 +93,7 @@ class User extends Model {
                AND `reset_expiry` > NOW()
                AND `actif` = 1
              LIMIT 1",
-            [$token]
+            [hash('sha256', $token)]
         );
     }
 
@@ -98,7 +109,7 @@ class User extends Model {
      */
     public function getAllWithRole(): array {
         return $this->query(
-            "SELECT id, nom, prenom, email, role, actif, created_at
+            "SELECT id, nom, prenom, email, role, actif, photo, created_at
              FROM `users`
              ORDER BY nom, prenom"
         );

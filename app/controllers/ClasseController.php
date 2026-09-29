@@ -21,9 +21,14 @@ class ClasseController extends Controller {
     // ─────────────────────────────────────────
     public function index(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('classes.view');
 
-        $classes    = $this->classeModel->classesActives();
-        $groupes    = $this->classeModel->classesParCycle();
+        $classes    = AuthMiddleware::hasRole(ROLE_PROF)
+            ? $this->classeModel->classesPourProf((int) AuthMiddleware::user()['id'])
+            : $this->classeModel->classesActives();
+        $groupes = ['college' => ['label' => 'Collège (6ème → 3ème)', 'classes' => []], 'lycee' => ['label' => 'Lycée (2nde → Terminale)', 'classes' => []]];
+        foreach ($classes as $classe) $groupes[$classe['niveau_cycle'] ?? 'college']['classes'][] = $classe;
+        $groupes = array_filter($groupes, fn($g) => !empty($g['classes']));
         $anneeActive = $this->classeModel->anneeActive();
 
         $totalEleves = array_sum(array_column($classes, 'nb_eleves'));

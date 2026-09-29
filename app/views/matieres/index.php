@@ -1,3 +1,4 @@
+<?php $csrf_token = (string) ($csrf_token ?? ''); $groupes = $groupes ?? []; $catalogue = $catalogue ?? []; ?>
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h4 class="fw-bold text-primary mb-0">Gestion des matières</h4>
@@ -70,7 +71,9 @@
                             <tr>
                                 <th>Matière</th>
                                 <th>Code</th>
-                                <th class="text-center">Coef.</th>
+                                <th class="text-center">Coefficient</th>
+                                <th class="text-center">Volume horaire</th>
+                                <th class="text-center">Statut</th>
                                 <th>Professeur</th>
                                 <?php if (AuthMiddleware::hasRole(ROLE_ADMIN)): ?>
                                 <th class="text-center" style="width:120px">Actions</th>
@@ -87,7 +90,11 @@
                                 <td class="fw-semibold"><?= htmlspecialchars($mat['nom']) ?></td>
                                 <td><?= htmlspecialchars($mat['code'] ?? '—') ?></td>
                                 <td class="text-center">
-                                    <span class="badge bg-primary-subtle text-primary"><?= number_format((float) $mat['coefficient'], 1, ',', ' ') ?></span>
+                                    <?= $mat['coefficient'] === null ? '<span class="text-muted">En attente</span>' : '<span class="badge bg-primary-subtle text-primary">' . number_format((float) $mat['coefficient'], 1, ',', ' ') . '</span>' ?>
+                                </td>
+                                <td class="text-center"><?= $mat['volume_horaire'] === null ? '<span class="text-muted">—</span>' : htmlspecialchars((string) $mat['volume_horaire']) . ' h' ?></td>
+                                <td class="text-center">
+                                    <?= (int) $mat['classe_matiere_statut'] === 1 ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">En attente</span>' ?>
                                 </td>
                                 <td>
                                     <?php if (!empty($mat['prof_nom'])): ?>
@@ -102,6 +109,9 @@
                                         <a href="<?= Router::url('matieres/modifier/' . $mat['id']) ?>" class="btn btn-sm btn-outline-warning" title="Modifier">
                                             <i class="bi bi-pencil"></i>
                                         </a>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#config-<?= (int) $classe['classe_id'] ?>-<?= (int) $mat['id'] ?>" title="Configurer">
+                                            <i class="bi bi-sliders"></i>
+                                        </button>
                                         <form method="POST" action="<?= Router::url('matieres/retirer') ?>" class="d-inline">
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                                             <input type="hidden" name="classe_id" value="<?= (int) $classe['classe_id'] ?>">
@@ -116,11 +126,40 @@
                                 </td>
                                 <?php endif; ?>
                             </tr>
+                            <?php if (AuthMiddleware::hasRole(ROLE_ADMIN)): ?>
+                            <tr class="collapse bg-light" id="config-<?= (int) $classe['classe_id'] ?>-<?= (int) $mat['id'] ?>">
+                                <td colspan="<?= AuthMiddleware::hasRole(ROLE_ADMIN) ? 7 : 6 ?>">
+                                    <form method="POST" action="<?= Router::url('matieres/configurer') ?>" class="row g-2 align-items-end">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+                                        <input type="hidden" name="classe_id" value="<?= (int) $classe['classe_id'] ?>">
+                                        <input type="hidden" name="matiere_id" value="<?= (int) $mat['id'] ?>">
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-1">Coefficient</label>
+                                            <input type="number" name="coefficient" class="form-control form-control-sm" min="0.5" max="20" step="0.5" value="<?= $mat['coefficient'] === null ? '' : htmlspecialchars((string) $mat['coefficient']) ?>">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-1">Volume horaire</label>
+                                            <input type="number" name="volume_horaire" class="form-control form-control-sm" min="0" step="0.5" value="<?= $mat['volume_horaire'] === null ? '' : htmlspecialchars((string) $mat['volume_horaire']) ?>">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-1">Statut</label>
+                                            <select name="statut" class="form-select form-select-sm">
+                                                <option value="1" <?= (int) $mat['classe_matiere_statut'] === 1 ? 'selected' : '' ?>>Active</option>
+                                                <option value="0" <?= (int) $mat['classe_matiere_statut'] !== 1 ? 'selected' : '' ?>>En attente / inactive</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <button type="submit" class="btn btn-sm btn-primary w-100"><i class="bi bi-check2 me-1"></i> Enregistrer</button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
                             <?php endforeach; ?>
                         </tbody>
                         <tfoot class="table-light">
                             <tr class="fw-bold">
-                                <td colspan="2">Total coefficients</td>
+                                <td colspan="4">Total coefficients actifs</td>
                                 <td class="text-center"><span class="badge bg-primary"><?= number_format($totalCoef, 1, ',', ' ') ?></span></td>
                                 <td colspan="<?= AuthMiddleware::hasRole(ROLE_ADMIN) ? 2 : 1 ?>"></td>
                             </tr>
@@ -144,8 +183,8 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label small mb-1">Coef.</label>
-                            <input type="number" name="coefficient" class="form-control form-control-sm" min="0.5" max="20" step="0.5" value="1" required>
+                            <label class="form-label small mb-1">Coefficient (optionnel)</label>
+                            <input type="number" name="coefficient" class="form-control form-control-sm" min="0.5" max="20" step="0.5" placeholder="En attente">
                         </div>
                         <div class="col-md-4">
                             <button type="submit" class="btn btn-sm btn-primary w-100">

@@ -1,0 +1,8 @@
+<div class="mb-4"><h4 class="fw-bold text-primary mb-1">Bonjour, <?= htmlspecialchars(($user['prenom'] ?? '').' '.($user['nom'] ?? '')) ?></h4><div class="text-muted">Votre espace pédagogique</div></div>
+<?php $user = $user ?? []; $canGrades = (bool) ($canGrades ?? false); $canAttendance = (bool) ($canAttendance ?? false); $canReports = (bool) ($canReports ?? false); $canEvents = (bool) ($canEvents ?? false); ?>
+<div class="row g-4">
+<?php if ($canGrades): ?><div class="col-md-6 col-lg-3"><a class="card h-100 text-decoration-none" href="<?= Router::url('notes') ?>"><div class="card-body"><i class="bi bi-pencil-square fs-2 text-primary"></i><h5 class="mt-3">Notes</h5><span class="text-muted">Consulter et saisir</span></div></a></div><?php endif; ?>
+<?php if ($canAttendance): ?><div class="col-md-6 col-lg-3"><a class="card h-100 text-decoration-none" href="<?= Router::url('absences') ?>"><div class="card-body"><i class="bi bi-calendar-x fs-2 text-warning"></i><h5 class="mt-3">Absences</h5><span class="text-muted">Suivi des classes affectées</span></div></a></div><?php endif; ?>
+<?php if ($canReports): ?><div class="col-md-6 col-lg-3"><a class="card h-100 text-decoration-none" href="<?= Router::url('bulletins') ?>"><div class="card-body"><i class="bi bi-file-earmark-text fs-2 text-success"></i><h5 class="mt-3">Bulletins</h5><span class="text-muted">Consulter les bulletins</span></div></a></div><?php endif; ?>
+<?php if ($canEvents): ?><div class="col-md-6 col-lg-3"><a class="card h-100 text-decoration-none" href="<?= Router::url('evenements') ?>"><div class="card-body"><i class="bi bi-calendar-event fs-2 text-info"></i><h5 class="mt-3">Événements</h5><span class="text-muted">Agenda de l’établissement</span></div></a></div><?php endif; ?>
+</div>

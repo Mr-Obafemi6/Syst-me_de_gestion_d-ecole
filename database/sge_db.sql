@@ -138,11 +138,13 @@ CREATE TABLE IF NOT EXISTS `classe_matieres` (
     `id`          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
     `classe_id`   INT UNSIGNED    NOT NULL,
     `matiere_id`  INT UNSIGNED    NOT NULL,
-    `coefficient` DECIMAL(4,2)    NOT NULL DEFAULT 1.00,
+    `coefficient` DECIMAL(4,2)    DEFAULT NULL,
+    `volume_horaire` DECIMAL(5,2) DEFAULT NULL,
+    `annee_scolaire_id` INT UNSIGNED NOT NULL,
     `statut`      TINYINT(1)      NOT NULL DEFAULT 1,
     `created_at`  TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_classe_matiere` (`classe_id`, `matiere_id`),
+    UNIQUE KEY `uk_classe_matiere_annee` (`classe_id`, `matiere_id`, `annee_scolaire_id`),
     INDEX `idx_classe` (`classe_id`),
     INDEX `idx_matiere` (`matiere_id`),
     CONSTRAINT `fk_classe_matieres_classe`
@@ -151,6 +153,9 @@ CREATE TABLE IF NOT EXISTS `classe_matieres` (
     CONSTRAINT `fk_classe_matieres_matiere`
         FOREIGN KEY (`matiere_id`) REFERENCES `matieres`(`id`)
         ON DELETE CASCADE ON UPDATE CASCADE
+    ,CONSTRAINT `fk_classe_matieres_annee`
+        FOREIGN KEY (`annee_scolaire_id`) REFERENCES `annees_scolaires`(`id`)
+        ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===== PÉRIODES D'ÉVALUATION =====
@@ -308,15 +313,15 @@ INSERT INTO `users` (`nom`, `prenom`, `email`, `password_hash`, `role`) VALUES (
 );
 
 INSERT INTO `parametres` (`cle`, `valeur`) VALUES
-('nom_ecole',           'Groupe Scolaire de Lomé'),
+('nom_ecole',           'Ecole .......'),
 ('adresse',             'Lomé, Togo'),
 ('telephone',           '+228 00 00 00 00'),
 ('email',               'contact@ecole.tg'),
 ('logo',                ''),
 ('devise',              'FCFA'),
-('frais_scol_primaire', '50000'),
-('frais_scol_college',  '80000'),
-('frais_scol_lycee',    '100000');
+('frais_scol_primaire', '......'),
+('frais_scol_college',  '.......'),
+('frais_scol_lycee',    '.......');
 
 SET FOREIGN_KEY_CHECKS = 1;
 SELECT 'OK - Base de données SGE créée avec succès.' AS message;

@@ -23,13 +23,15 @@ class EleveController extends Controller {
     // ─────────────────────────────────────────
     public function index(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('students.view');
 
         $page      = max(1, (int) $this->get('page', 1));
         $recherche = trim($this->get('q', ''));
         $classeId  = (int) $this->get('classe', 0);
 
-        $pagination = $this->eleveModel->listerAvecClasse($page, $recherche, $classeId);
-        $classes    = $this->classeModel->toutesLesClasses();
+        $teacherId = AuthMiddleware::hasRole(ROLE_PROF) ? (int) AuthMiddleware::user()['id'] : null;
+        $pagination = $this->eleveModel->listerAvecClasse($page, $recherche, $classeId, $teacherId);
+        $classes    = $teacherId === null ? $this->classeModel->toutesLesClasses() : $this->classeModel->classesPourProf($teacherId);
 
         $db = Database::getConnection();
         $statsEleves = [

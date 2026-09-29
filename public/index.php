@@ -13,6 +13,7 @@ require_once ROOT_PATH . '/app/core/Router.php';
 require_once ROOT_PATH . '/app/core/Controller.php';
 require_once ROOT_PATH . '/app/core/Model.php';
 require_once ROOT_PATH . '/app/middleware/AuthMiddleware.php';
+require_once ROOT_PATH . '/app/services/AuthorizationService.php';
 
 // Autoload des modèles
 foreach (glob(ROOT_PATH . '/app/models/*.php') as $model) {
@@ -57,8 +58,13 @@ $routes = [
     'export'     => 'ExportController',
     'absences'   => 'AbsenceController',
     'evenements' => 'EvenementController',
+    'enseignants' => 'EnseignantController',
+    'emplois-du-temps' => 'EmploiDuTempsController',
+    'documentation' => 'DocumentationController',
     'recherche'  => 'RechercheController',
     'notifications' => 'NotificationController',
+    'permissions' => 'PermissionController',
+    'affectations' => 'AffectationController',
     'espace-parent' => 'EspaceParentController',
     'espace-eleve'  => 'EspaceEleveController',
 ];

@@ -64,9 +64,23 @@ class Controller {
         return [
             'app_logo' => $this->getAppSetting('logo'),
             'app_name' => $this->getAppSetting('nom_ecole', 'SGE'),
+            'active_school_year' => $this->getActiveSchoolYear(),
             'current_user_photo' => $user['photo'] ?? null,
             'current_user_initials' => $userInitials,
         ];
+    }
+
+    /**
+     * Retourne l’année scolaire active si elle existe.
+     */
+    protected function getActiveSchoolYear(): string {
+        try {
+            $db = Database::getConnection();
+            $row = $db->query("SELECT libelle FROM annees_scolaires WHERE active = 1 ORDER BY id DESC LIMIT 1")->fetch();
+            return $row['libelle'] ?? '';
+        } catch (Throwable $e) {
+            return '';
+        }
     }
 
     /**
@@ -105,26 +119,29 @@ class Controller {
             return null;
         }
 
-        $mime = strtolower((string) ($file['type'] ?? ''));
-        if ($mime === '') {
-            $mime = strtolower((string) mime_content_type($file['tmp_name']));
-        }
-
-        if (!in_array($mime, $allowedTypes, true)) {
+        // Le type réel est lu dans le contenu du fichier, jamais fourni par le client
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime  = (string) $finfo->file($file['tmp_name']);
+        $extensions = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            'image/gif'  => 'gif',
+        ];
+        if (!in_array($mime, $allowedTypes, true) || !isset($extensions[$mime])) {
             return null;
         }
-
-        $extension = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
-        if ($extension === '') {
-            $extension = 'jpg';
+        if (@getimagesize($file['tmp_name']) === false) {
+            return null;
         }
+        $extension = $extensions[$mime]; // extension imposée par le serveur
 
         $targetDir = PUBLIC_PATH . '/uploads/' . trim($subdir, '/');
         if (!is_dir($targetDir)) {
-            mkdir($targetDir, 0777, true);
+            mkdir($targetDir, 0755, true);
         }
 
-        $targetFile = $targetDir . '/' . uniqid('img_', true) . '.' . $extension;
+        $targetFile = $targetDir . '/' . bin2hex(random_bytes(16)) . '.' . $extension;
         if (!move_uploaded_file($file['tmp_name'], $targetFile)) {
             return null;
         }
@@ -140,8 +157,10 @@ class Controller {
             return;
         }
 
-        $absolutePath = PUBLIC_PATH . '/' . ltrim($path, '/');
-        if (is_file($absolutePath)) {
+        $base = realpath(PUBLIC_PATH . '/uploads');
+        $absolutePath = realpath(PUBLIC_PATH . '/' . ltrim($path, '/'));
+        // Refuse tout chemin qui sort de public/uploads (ex. ../../config)
+        if ($base && $absolutePath && strncmp($absolutePath, $base . DIRECTORY_SEPARATOR, strlen($base) + 1) === 0 && is_file($absolutePath)) {
             unlink($absolutePath);
         }
     }

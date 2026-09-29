@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($title ?? 'SGE') ?> — SGE</title>
+    <title><?= htmlspecialchars($title ?? 'SGE') ?> — SGE (Systemegestionecol)</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/vendor/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/vendor/bootstrap-icons/css/bootstrap-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -78,6 +78,16 @@
 
         #auth-loader.hidden { opacity: 0; visibility: hidden; }
 
+        .auth-loader-shell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: white;
+            text-align: center;
+        }
+
         .auth-ring {
             width: 42px;
             height: 42px;
@@ -85,6 +95,13 @@
             border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin .8s linear infinite;
+        }
+
+        .auth-loader-text {
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: rgba(255, 255, 255, 0.96);
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -261,13 +278,35 @@
     <?= $content ?>
     <script src="<?= BASE_URL ?>/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
-    // Loader auth
+    function showAuthLoader(message = 'Connexion en cours...') {
+        let authLoader = document.getElementById('auth-loader');
+        if (!authLoader) {
+            authLoader = document.createElement('div');
+            authLoader.id = 'auth-loader';
+            document.body.prepend(authLoader);
+        }
+        authLoader.innerHTML = `
+            <div class="auth-loader-shell">
+                <div class="auth-ring"></div>
+                <div class="auth-loader-text">${message}</div>
+            </div>
+        `;
+        authLoader.classList.remove('hidden');
+    }
+
+    function hideAuthLoader() {
+        const authLoader = document.getElementById('auth-loader');
+        if (authLoader) {
+            authLoader.classList.add('hidden');
+        }
+    }
+
     const authLoader = document.createElement('div');
     authLoader.id = 'auth-loader';
-    authLoader.innerHTML = '<div class="auth-ring"></div>';
+    authLoader.innerHTML = '<div class="auth-loader-shell"><div class="auth-ring"></div><div class="auth-loader-text">Connexion en cours...</div></div>';
     document.body.prepend(authLoader);
     window.addEventListener('load', () => {
-        setTimeout(() => authLoader.classList.add('hidden'), 150);
+        setTimeout(() => hideAuthLoader(), 150);
     });
 
     // Toggle mot de passe
@@ -286,12 +325,14 @@
         });
     });
 
-    // Spinner bouton login
+    // Loader fullscreen réservé à l'authentification
     document.querySelector('form')?.addEventListener('submit', function() {
         const btn = this.querySelector('.btn-auth');
         if (btn) {
             btn.classList.add('loading');
+            btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Connexion…';
+            showAuthLoader('Connexion en cours...');
         }
     });
     </script>

@@ -80,16 +80,9 @@ class MatiereController extends Controller {
             'nom' => $data['nom'],
             'code' => $data['code'],
             'description' => $data['description'],
-            'coefficient' => $data['coefficient'],
             'statut' => $data['statut'],
             'prof_id' => $data['prof_id'] ?: null,
         ]);
-
-        if (!empty($data['classes'])) {
-            foreach ($data['classes'] as $classeId) {
-                $this->matiereModel->assignerAClasse($matiereId, (int) $classeId, $data['coefficient']);
-            }
-        }
 
         $this->flash('success', 'Matière créée avec succès.');
         Router::redirect('matieres');
@@ -149,18 +142,9 @@ class MatiereController extends Controller {
             'nom' => $data['nom'],
             'code' => $data['code'],
             'description' => $data['description'],
-            'coefficient' => $data['coefficient'],
             'statut' => $data['statut'],
             'prof_id' => $data['prof_id'] ?: null,
         ]);
-
-        $db = Database::getConnection();
-        $db->prepare("DELETE FROM `classe_matieres` WHERE `matiere_id` = ?")->execute([$id]);
-        if (!empty($data['classes'])) {
-            foreach ($data['classes'] as $classeId) {
-                $this->matiereModel->assignerAClasse($id, (int) $classeId, $data['coefficient']);
-            }
-        }
 
         $this->flash('success', 'Matière mise à jour avec succès.');
         Router::redirect('matieres');
@@ -189,20 +173,47 @@ class MatiereController extends Controller {
 
         $classeId   = (int) $this->post('classe_id', 0);
         $matiereId  = (int) $this->post('matiere_id', 0);
-        $coefficient = (float) str_replace(',', '.', (string) $this->post('coefficient', '1'));
+        $coefficientInput = trim((string) $this->post('coefficient', ''));
+        $coefficient = $coefficientInput === '' ? null : (float) str_replace(',', '.', $coefficientInput);
 
         if ($classeId <= 0 || $matiereId <= 0) {
             $this->flash('error', 'Classe ou matière invalide.');
             Router::redirect('matieres');
         }
 
-        if ($coefficient <= 0 || $coefficient > 20) {
+        if ($coefficient !== null && ($coefficient <= 0 || $coefficient > 20)) {
             $this->flash('error', 'Coefficient invalide (0,5 à 20).');
             Router::redirect('matieres');
         }
 
-        $this->matiereModel->assignerAClasse($matiereId, $classeId, $coefficient);
+        $this->matiereModel->assignerAClasse($matiereId, $classeId, $coefficient, null, null, $coefficient === null ? 0 : 1);
         $this->flash('success', 'Matière assignée à la classe.');
+        Router::redirect('matieres');
+    }
+
+    /**
+     * POST /matieres/configurer — Modifier une association classe/matière.
+     */
+    public function configurer(?string $param = null): void {
+        AuthMiddleware::requireRole(ROLE_ADMIN);
+        $this->requireMethod('POST');
+        $this->validateCsrf();
+
+        $classeId = (int) $this->post('classe_id', 0);
+        $matiereId = (int) $this->post('matiere_id', 0);
+        $coefficientInput = trim((string) $this->post('coefficient', ''));
+        $coefficient = $coefficientInput === '' ? null : (float) str_replace(',', '.', $coefficientInput);
+        $volumeInput = trim((string) $this->post('volume_horaire', ''));
+        $volumeHoraire = $volumeInput === '' ? null : (float) str_replace(',', '.', $volumeInput);
+        $statut = (int) $this->post('statut', 0) === 1 ? 1 : 0;
+
+        if ($classeId <= 0 || $matiereId <= 0 || ($coefficient !== null && ($coefficient <= 0 || $coefficient > 20)) || ($statut === 1 && $coefficient === null) || ($volumeHoraire !== null && $volumeHoraire < 0)) {
+            $this->flash('error', 'Configuration matière invalide. Un coefficient est requis pour activer la matière.');
+            Router::redirect('matieres');
+        }
+
+        $this->matiereModel->assignerAClasse($matiereId, $classeId, $coefficient, $volumeHoraire, null, $statut);
+        $this->flash('success', 'Configuration de la matière enregistrée.');
         Router::redirect('matieres');
     }
 
@@ -243,9 +254,6 @@ class MatiereController extends Controller {
         $errors = [];
         if (empty($data['nom'])) {
             $errors['nom'] = 'Le nom de la matière est obligatoire.';
-        }
-        if ($data['coefficient'] <= 0 || $data['coefficient'] > 20) {
-            $errors['coefficient'] = 'Le coefficient doit être compris entre 0,5 et 20.';
         }
         return $errors;
     }

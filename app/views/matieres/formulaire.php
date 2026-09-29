@@ -1,3 +1,4 @@
+<?php $matiere = $matiere ?? []; $errors = $errors ?? []; $classes = $classes ?? []; $profs = $profs ?? []; $csrf_token = (string) ($csrf_token ?? ''); ?>
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
@@ -28,10 +29,6 @@
                             <label class="form-label">Code</label>
                             <input type="text" class="form-control" name="code" value="<?= htmlspecialchars($matiere['code'] ?? '') ?>" placeholder="FR">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Coefficient</label>
-                            <input type="number" class="form-control" name="coefficient" min="0.5" max="20" step="0.5" value="<?= htmlspecialchars((string) ($matiere['coefficient'] ?? 1)) ?>">
-                        </div>
                         <div class="col-12">
                             <label class="form-label">Description</label>
                             <textarea class="form-control" name="description" rows="3"><?= htmlspecialchars($matiere['description'] ?? '') ?></textarea>
@@ -54,23 +51,12 @@
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label">Classes concernées</label>
-                            <div class="row g-2">
-                                <?php foreach ($classes as $classe): ?>
-                                    <div class="col-md-4">
-                                        <div class="form-check border rounded p-2">
-                                            <input class="form-check-input" type="checkbox" name="classes[]" value="<?= (int) $classe['id'] ?>" id="classe-<?= (int) $classe['id'] ?>">
-                                            <label class="form-check-label" for="classe-<?= (int) $classe['id'] ?>"><?= htmlspecialchars($classe['libelle_complete'] ?? $classe['nom']) ?></label>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary"
+                                data-loading-message="<?= !empty($matiere['id']) ? 'Modification de la matière en cours...' : 'Création de la matière en cours...' ?>"
+                                data-loading-label="<?= !empty($matiere['id']) ? 'Modification...' : 'Création...' ?>">
                             <i class="bi bi-check-circle me-1"></i>
                             <?= !empty($matiere['id']) ? 'Enregistrer' : 'Créer la matière' ?>
                         </button>

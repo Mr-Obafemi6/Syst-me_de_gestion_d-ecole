@@ -3,7 +3,7 @@
 
 if (!defined('BASE_URL')) {
     // Nom du dossier avec espace et accent — encodage URL obligatoire
-    define('BASE_URL', 'http://localhost/Systèmegestionecole/public');
+    define('BASE_URL', 'http://localhost/Systemegestionecole/public');
 }
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(__DIR__));

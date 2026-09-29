@@ -26,6 +26,7 @@ class NoteController extends Controller {
     // ─────────────────────────────────────────
     public function index(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('grades.view');
 
         $user     = AuthMiddleware::user();
         $classeId = (int) $this->get('classe', 0);
@@ -33,15 +34,21 @@ class NoteController extends Controller {
 
         // Prof : uniquement ses matières
         if (AuthMiddleware::hasRole(ROLE_PROF)) {
-            $matieres = $this->matiereModel->parProf($user['id']);
-            $classes  = array_unique(array_column($matieres, 'classe_id'));
+            if ($classeId > 0) {
+                AuthorizationService::getInstance()->requireTeacherClass($classeId);
+                $matieres = $this->matiereModel->parClassePourProf($classeId, (int) $user['id']);
+            } else {
+                $matieres = $this->matiereModel->parProf($user['id']);
+            }
         } else {
             $matieres = $classeId > 0
                 ? $this->matiereModel->parClasse($classeId)
                 : [];
         }
 
-        $classes = $this->classeModel->toutesLesClasses();
+        $classes = AuthMiddleware::hasRole(ROLE_PROF)
+            ? $this->classeModel->classesPourProf((int) $user['id'])
+            : $this->classeModel->toutesLesClasses();
 
         $this->render('notes/saisie', [
             'title'     => 'Notes',
@@ -68,6 +75,11 @@ class NoteController extends Controller {
         if (!$eleve) {
             $this->flash('error', 'Élève introuvable.');
             Router::redirect('eleves');
+        }
+
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            AuthorizationService::getInstance()->requirePermission('grades.view');
+            AuthorizationService::getInstance()->requireTeacherClass((int) $eleve['classe_id']);
         }
 
         // Parent : uniquement son enfant
@@ -120,6 +132,7 @@ class NoteController extends Controller {
      */
     public function apiEleves(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('grades.view');
 
         $classeId   = (int) $this->get('classe_id', 0);
         $matiereId  = (int) $this->get('matiere_id', 0);
@@ -127,6 +140,10 @@ class NoteController extends Controller {
 
         if ($classeId <= 0) {
             $this->json(['error' => 'classe_id manquant'], 400);
+        }
+
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            AuthorizationService::getInstance()->requireTeacherClass($classeId);
         }
 
         $eleves = $this->eleveModel->parClasse($classeId);
@@ -162,6 +179,8 @@ class NoteController extends Controller {
      */
     public function apiMatieres(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('grades.view');
+        $user = AuthMiddleware::user();
 
         $classeId = (int) $this->get('classe_id', 0);
 
@@ -169,7 +188,13 @@ class NoteController extends Controller {
             $this->json(['error' => 'classe_id manquant'], 400);
         }
 
-        $matieres = $this->matiereModel->parClasse($classeId);
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            AuthorizationService::getInstance()->requireTeacherClass($classeId);
+        }
+
+        $matieres = AuthMiddleware::hasRole(ROLE_PROF)
+            ? $this->matiereModel->parClassePourProf($classeId, (int) $user['id'])
+            : $this->matiereModel->parClasse($classeId);
         $this->json(['matieres' => $matieres]);
     }
 
@@ -180,6 +205,7 @@ class NoteController extends Controller {
      */
     public function apiSauvegarder(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('grades.create');
         $this->requireMethod('POST');
 
         $input = json_decode(file_get_contents('php://input'), true);
@@ -211,6 +237,14 @@ class NoteController extends Controller {
 
         if ($periode < 1 || $periode > 3) {
             $this->json(['error' => 'Période invalide (1, 2 ou 3)'], 400);
+        }
+
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            $eleve = $this->eleveModel->ficheComplete($eleveId);
+            if (!$eleve) {
+                $this->json(['error' => 'Élève introuvable'], 404);
+            }
+            AuthorizationService::getInstance()->requireTeacherClassSubject((int) $eleve['classe_id'], $matiereId);
         }
 
         // Insérer la note
@@ -259,6 +293,7 @@ class NoteController extends Controller {
      */
     public function apiSupprimer(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('grades.delete');
         $this->requireMethod('POST'); // On utilise POST avec _method=DELETE pour compatibilité
 
         $id   = (int) $param;
@@ -266,6 +301,14 @@ class NoteController extends Controller {
 
         if (!$note) {
             $this->json(['error' => 'Note introuvable'], 404);
+        }
+
+        if (AuthMiddleware::hasRole(ROLE_PROF)) {
+            $eleve = $this->eleveModel->ficheComplete((int) $note['eleve_id']);
+            if (!$eleve) {
+                $this->json(['error' => 'Élève introuvable'], 404);
+            }
+            AuthorizationService::getInstance()->requireTeacherClassSubject((int) $eleve['classe_id'], (int) $note['matiere_id']);
         }
 
         $this->noteModel->delete($id);

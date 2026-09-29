@@ -1,5 +1,6 @@
 <!-- app/views/notes/saisie.php -->
 
+<?php $classes = $classes ?? []; $classeId = (int) ($classeId ?? 0); $periode = (int) ($periode ?? 1); ?>
 <!-- Sélecteurs -->
 <div class="card mb-4">
     <div class="card-body">
@@ -10,7 +11,7 @@
                     <option value="">-- Choisir une classe --</option>
                     <?php foreach ($classes as $cl): ?>
                     <option value="<?= $cl['id'] ?>" <?= $classeId == $cl['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($cl['nom']) ?>
+                        <?= htmlspecialchars($cl['niveau']) ?>
                     </option>
                     <?php endforeach; ?>
                 </select>

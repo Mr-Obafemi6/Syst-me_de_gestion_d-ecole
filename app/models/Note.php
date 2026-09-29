@@ -19,11 +19,16 @@ class Note extends Model {
         }
 
         return $this->query(
-            "SELECT n.*, m.nom AS matiere_nom, m.coefficient,
+                "SELECT n.*, m.nom AS matiere_nom, cm.coefficient,
                     c.nom AS classe_nom
              FROM `notes` n
              JOIN `matieres` m ON m.id = n.matiere_id
-             JOIN `classes`  c ON c.id = m.classe_id
+                 JOIN `eleves` e ON e.id = n.eleve_id
+                 JOIN `classes` c ON c.id = e.classe_id
+                 JOIN `classe_matieres` cm ON cm.classe_id = c.id
+                    AND cm.matiere_id = m.id
+                    AND cm.annee_scolaire_id = c.annee_scolaire_id
+                    AND cm.statut = 1
              WHERE $where
              ORDER BY n.periode, m.nom, n.date_eval",
             $params
@@ -57,7 +62,7 @@ class Note extends Model {
         }
 
         return $this->query(
-            "SELECT m.id AS matiere_id, m.nom AS matiere_nom, m.coefficient,
+            "SELECT m.id AS matiere_id, m.nom AS matiere_nom, cm.coefficient,
                     n.periode,
                     ROUND(AVG(n.note), 2) AS moyenne,
                     MIN(n.note) AS note_min,
@@ -67,9 +72,15 @@ class Note extends Model {
                     u.prenom AS prof_prenom
              FROM `notes` n
              JOIN `matieres` m ON m.id = n.matiere_id
+                  JOIN `eleves` e ON e.id = n.eleve_id
+                  JOIN `classes` c ON c.id = e.classe_id
+                  JOIN `classe_matieres` cm ON cm.classe_id = c.id
+                      AND cm.matiere_id = m.id
+                      AND cm.annee_scolaire_id = c.annee_scolaire_id
+                      AND cm.statut = 1
              LEFT JOIN `users` u ON u.id = m.prof_id
              WHERE $where
-             GROUP BY m.id, m.nom, m.coefficient, n.periode, u.nom, u.prenom
+             GROUP BY m.id, m.nom, cm.coefficient, n.periode, u.nom, u.prenom
              ORDER BY n.periode, m.nom",
             $params
         );
@@ -85,12 +96,18 @@ class Note extends Model {
                     SUM(sub.moyenne * sub.coefficient) / NULLIF(SUM(sub.coefficient), 0)
                 , 2) AS moy_gen
              FROM (
-                SELECT m.coefficient,
+                  SELECT cm.coefficient,
                        ROUND(AVG(n.note), 2) AS moyenne
                 FROM `notes` n
                 JOIN `matieres` m ON m.id = n.matiere_id
+                  JOIN `eleves` e ON e.id = n.eleve_id
+                  JOIN `classes` c ON c.id = e.classe_id
+                  JOIN `classe_matieres` cm ON cm.classe_id = c.id
+                      AND cm.matiere_id = m.id
+                      AND cm.annee_scolaire_id = c.annee_scolaire_id
+                      AND cm.statut = 1
                 WHERE n.eleve_id = ? AND n.periode = ?
-                GROUP BY m.id, m.coefficient
+                GROUP BY m.id, cm.coefficient
              ) sub",
             [$eleveId, $periode]
         );
@@ -107,12 +124,18 @@ class Note extends Model {
                     SUM(sub.moyenne * sub.coefficient) / NULLIF(SUM(sub.coefficient), 0)
                 , 2) AS moy_gen
              FROM (
-                SELECT m.coefficient,
+                  SELECT cm.coefficient,
                        ROUND(AVG(n.note), 2) AS moyenne
                 FROM `notes` n
                 JOIN `matieres` m ON m.id = n.matiere_id
+                  JOIN `eleves` e ON e.id = n.eleve_id
+                  JOIN `classes` c ON c.id = e.classe_id
+                  JOIN `classe_matieres` cm ON cm.classe_id = c.id
+                      AND cm.matiere_id = m.id
+                      AND cm.annee_scolaire_id = c.annee_scolaire_id
+                      AND cm.statut = 1
                 WHERE n.eleve_id = ?
-                GROUP BY m.id, m.coefficient
+                GROUP BY m.id, cm.coefficient
              ) sub",
             [$eleveId]
         );
@@ -130,12 +153,18 @@ class Note extends Model {
                     ROUND(SUM(sub.moyenne * sub.coefficient) / NULLIF(SUM(sub.coefficient),0), 2) AS moy
                 FROM `eleves` e2
                 JOIN (
-                    SELECT n.eleve_id, m.coefficient,
+                    SELECT n.eleve_id, cm.coefficient,
                            ROUND(AVG(n.note),2) AS moyenne
                     FROM `notes` n
                     JOIN `matieres` m ON m.id = n.matiere_id
+                    JOIN `eleves` e ON e.id = n.eleve_id
+                    JOIN `classes` c ON c.id = e.classe_id
+                    JOIN `classe_matieres` cm ON cm.classe_id = c.id
+                           AND cm.matiere_id = m.id
+                           AND cm.annee_scolaire_id = c.annee_scolaire_id
+                           AND cm.statut = 1
                     WHERE n.periode = ?
-                    GROUP BY n.eleve_id, m.id, m.coefficient
+                    GROUP BY n.eleve_id, m.id, cm.coefficient
                 ) sub ON sub.eleve_id = e2.id
                 WHERE e2.classe_id = ? AND e2.actif = 1
                 GROUP BY e2.id
@@ -143,11 +172,17 @@ class Note extends Model {
              WHERE classement.moy > (
                 SELECT ROUND(SUM(s2.moyenne * s2.coefficient) / NULLIF(SUM(s2.coefficient),0), 2)
                 FROM (
-                    SELECT m2.coefficient, ROUND(AVG(n2.note),2) AS moyenne
+                          SELECT cm2.coefficient, ROUND(AVG(n2.note),2) AS moyenne
                     FROM `notes` n2
                     JOIN `matieres` m2 ON m2.id = n2.matiere_id
+                          JOIN `eleves` e2 ON e2.id = n2.eleve_id
+                          JOIN `classes` c2 ON c2.id = e2.classe_id
+                          JOIN `classe_matieres` cm2 ON cm2.classe_id = c2.id
+                              AND cm2.matiere_id = m2.id
+                              AND cm2.annee_scolaire_id = c2.annee_scolaire_id
+                              AND cm2.statut = 1
                     WHERE n2.eleve_id = ? AND n2.periode = ?
-                    GROUP BY m2.id, m2.coefficient
+                          GROUP BY m2.id, cm2.coefficient
                 ) s2
              )",
             [$periode, $classeId, $eleveId, $periode]

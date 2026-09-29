@@ -135,7 +135,9 @@
 
             <hr class="my-4">
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-warning">
+                <button type="submit" class="btn btn-warning"
+                        data-loading-message="Enregistrement de l'absence en cours..."
+                        data-loading-label="Enregistrement...">
                     <i class="bi bi-check-circle me-1"></i> Enregistrer l'absence
                 </button>
                 <a href="<?= Router::url('absences') ?>" class="btn btn-outline-secondary">

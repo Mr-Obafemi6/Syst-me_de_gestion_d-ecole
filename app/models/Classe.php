@@ -13,7 +13,10 @@ class Classe extends Model {
                     u.nom AS enseignant_nom, u.prenom AS enseignant_prenom,
                     COUNT(DISTINCT e.id) AS nb_eleves,
                     COUNT(DISTINCT cm.matiere_id) AS nb_matieres,
-                    TRIM(CONCAT(COALESCE(n.nom, c.niveau), ' ', c.nom)) AS libelle_complete
+                    CASE
+                        WHEN TRIM(c.niveau) = '' THEN TRIM(c.nom)
+                        ELSE TRIM(CONCAT(COALESCE(NULLIF(n.nom, ''), c.niveau), ' ', c.nom))
+                    END AS libelle_complete
              FROM `classes` c
              JOIN `annees_scolaires` a ON a.id = c.annee_scolaire_id AND a.active = 1
              LEFT JOIN `niveaux` n ON n.id = c.niveau_id
@@ -49,10 +52,30 @@ class Classe extends Model {
         return array_filter($groupes, fn($g) => !empty($g['classes']));
     }
 
+    public function classesPourProf(int $profId): array {
+        return $this->query(
+            "SELECT DISTINCT c.*, n.nom AS niveau_nom, n.cycle AS niveau_cycle,
+                    a.libelle AS annee_libelle,
+                    CASE WHEN TRIM(c.niveau) = '' THEN TRIM(c.nom)
+                         ELSE TRIM(CONCAT(COALESCE(NULLIF(n.nom, ''), c.niveau), ' ', c.nom))
+                    END AS libelle_complete
+             FROM teacher_assignments ta
+             JOIN classes c ON c.id = ta.class_id AND c.annee_scolaire_id = ta.school_year_id
+             JOIN niveaux n ON n.id = c.niveau_id
+             JOIN annees_scolaires a ON a.id = c.annee_scolaire_id AND a.active = 1
+             WHERE ta.teacher_id = ? AND ta.status = 1 AND c.statut = 1
+             ORDER BY n.ordre, c.nom",
+            [$profId]
+        );
+    }
+
     public function toutesLesClasses(): array {
         return $this->query(
             "SELECT c.*, n.nom AS niveau_nom, a.libelle AS annee,
-                    CONCAT(COALESCE(n.nom, c.niveau), ' ', c.nom) AS libelle_complete
+                    CASE
+                        WHEN TRIM(c.niveau) = '' THEN TRIM(c.nom)
+                        ELSE TRIM(CONCAT(COALESCE(NULLIF(n.nom, ''), c.niveau), ' ', c.nom))
+                    END AS libelle_complete
              FROM `classes` c
              JOIN `annees_scolaires` a ON a.id = c.annee_scolaire_id
              LEFT JOIN `niveaux` n ON n.id = c.niveau_id
@@ -65,7 +88,10 @@ class Classe extends Model {
             "SELECT c.*, n.nom AS niveau_nom, n.cycle AS niveau_cycle, a.libelle AS annee_libelle,
                     u.nom AS enseignant_nom, u.prenom AS enseignant_prenom,
                     COUNT(DISTINCT e.id) AS nb_eleves,
-                    TRIM(CONCAT(COALESCE(n.nom, c.niveau), ' ', c.nom)) AS libelle_complete
+                    CASE
+                        WHEN TRIM(c.niveau) = '' THEN TRIM(c.nom)
+                        ELSE TRIM(CONCAT(COALESCE(NULLIF(n.nom, ''), c.niveau), ' ', c.nom))
+                    END AS libelle_complete
              FROM `classes` c
              JOIN `annees_scolaires` a ON a.id = c.annee_scolaire_id
              LEFT JOIN `niveaux` n ON n.id = c.niveau_id

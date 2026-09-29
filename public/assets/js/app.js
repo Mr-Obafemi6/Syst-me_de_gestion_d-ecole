@@ -65,6 +65,84 @@
     });
 })();
 
+function showActionLoader(target, message = 'Enregistrement en cours...') {
+    const host = target instanceof HTMLElement ? target : document.querySelector(target);
+    if (!host) return;
+
+    host.classList.add('is-action-loading');
+    host.style.position = host.style.position || 'relative';
+
+    let loader = host.querySelector(':scope > .action-loader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.className = 'action-loader';
+        host.appendChild(loader);
+    }
+
+    loader.innerHTML = `
+        <div class="action-loader-spinner"></div>
+        <div class="action-loader-text">${message}</div>
+    `;
+    loader.classList.add('show');
+}
+
+function hideActionLoader(target) {
+    const host = target instanceof HTMLElement ? target : document.querySelector(target);
+    if (!host) return;
+
+    const loader = host.querySelector(':scope > .action-loader');
+    if (loader) {
+        loader.classList.remove('show');
+    }
+    host.classList.remove('is-action-loading');
+}
+
+function getActionLoadingMessage(button) {
+    if (!button) return 'Enregistrement en cours...';
+
+    const customMessage = button.dataset.loadingMessage || button.dataset.actionMessage;
+    if (customMessage) return customMessage;
+
+    const label = (button.textContent || '').trim().toLowerCase();
+    if (label.includes('supprimer')) return 'Suppression en cours...';
+    if (label.includes('modifier') || label.includes('mettre à jour') || label.includes('enregistrer les modifications')) return 'Modification en cours...';
+    return 'Enregistrement en cours...';
+}
+
+function setActionButtonLoading(button) {
+    if (!button || button.dataset.loadingApplied === '1') return;
+
+    const message = getActionLoadingMessage(button);
+    const nextLabel = button.dataset.loadingLabel || (button.textContent || '').replace(/\s+/g, ' ').trim();
+
+    button.dataset.originalHtml = button.innerHTML;
+    button.dataset.loadingApplied = '1';
+    button.disabled = true;
+    button.classList.add('btn-loading');
+
+    const spinner = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>';
+    button.innerHTML = `${spinner}${nextLabel.includes('Supprimer') ? 'Suppression...' : nextLabel.includes('Modifier') || nextLabel.includes('Enregistrer les modifications') ? 'Modification...' : 'Enregistrement...'}`;
+
+    if (button.closest('form')) {
+        showActionLoader(button.closest('form'), message);
+    }
+}
+
+function resetActionButtonLoading(button) {
+    if (!button) return;
+
+    button.disabled = false;
+    button.classList.remove('btn-loading');
+    if (button.dataset.originalHtml) {
+        button.innerHTML = button.dataset.originalHtml;
+    }
+    button.dataset.loadingApplied = '0';
+
+    if (button.closest('form')) {
+        hideActionLoader(button.closest('form'));
+    }
+}
+
 /* ===== DOM READY ===== */
 document.addEventListener('DOMContentLoaded', () => {
     const sidebar   = document.getElementById('sidebar');
@@ -72,6 +150,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const overlay = document.getElementById('sidebar-overlay');
     const toast = document.getElementById('welcome-toast');
     const clockEl = document.getElementById('header-clock');
+    const establishmentToggle = document.querySelector('.sidebar-establishment-toggle');
+    const userMenu = document.getElementById('sidebar-user-menu');
+
+    function setUserMenuState(open) {
+        if (!establishmentToggle || !userMenu) return;
+        establishmentToggle.setAttribute('aria-expanded', String(open));
+        userMenu.classList.toggle('open', open);
+        userMenu.setAttribute('aria-hidden', String(!open));
+    }
+
+    if (establishmentToggle && userMenu) {
+        establishmentToggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const isOpen = establishmentToggle.getAttribute('aria-expanded') === 'true';
+            setUserMenuState(!isOpen);
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!establishmentToggle.contains(event.target) && !userMenu.contains(event.target)) {
+                setUserMenuState(false);
+            }
+        });
+    }
 
     function updateClock() {
         if (clockEl) {
@@ -105,6 +206,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (overlay) {
         overlay.addEventListener('click', () => toggleSidebar(false));
+    }
+
+    if (sidebar) {
+        sidebar.addEventListener('click', (event) => {
+            if (window.innerWidth < 992 && event.target.closest('a[href]')) {
+                toggleSidebar(false);
+            }
+        });
     }
 
     window.addEventListener('resize', () => {
@@ -181,23 +290,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ── CHARGEMENT SUR SOUMISSION FORMULAIRE (bouton avec spinner) ──
+    // ── CHARGEMENT SUR SOUMISSION FORMULAIRE (action locale, pas fullscreen d'auth) ──
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function () {
             const btn = form.querySelector('[type="submit"]');
             if (btn && !btn.dataset.noloader) {
-                btn.disabled = true;
-                btn.classList.add('btn-loading');
-                const orig = btn.innerHTML;
-                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Patientez…`;
-                // Sécurité : réactiver après 10s
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.classList.remove('btn-loading');
-                    btn.innerHTML = orig;
-                }, 10000);
+                setActionButtonLoading(btn);
             }
         });
+    });
+
+    document.addEventListener('ajax:error', () => {
+        document.querySelectorAll('form.is-action-loading').forEach(form => hideActionLoader(form));
     });
 
     // ── RECHERCHE AVEC DEBOUNCE ──

@@ -110,15 +110,21 @@ class AuthController extends Controller {
         // Générer le token (même si l'email n'existe pas — sécurité anti-énumération)
         $token = $this->userModel->generateResetToken($email);
 
-        // En production : envoyer un email avec le lien
-        // Pour l'instant : afficher le lien directement (développement)
-        $resetLink = Router::url('auth/reset?token=' . $token);
+        if ($token !== null) {
+            $link = Router::url('auth/reset?token=' . $token);
+            $sent = @mail($email, 'Réinitialisation de votre mot de passe SGE',
+                "Bonjour,\n\nPour choisir un nouveau mot de passe (valable 1 h) :\n" . $link . "\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.",
+                'Content-Type: text/plain; charset=UTF-8');
+            if (!$sent) {
+                error_log('SGE reset mail non envoyé pour ' . $email);
+            }
+        }
 
+        // Même réponse que l'email existe ou non (anti-énumération)
         $this->render('auth/forgot', [
             'title'      => 'Mot de passe oublié',
             'csrf_token' => $this->generateCsrfToken(),
             'sent'       => true,
-            'reset_link' => $resetLink, // À retirer en production
             'error'      => null,
         ], 'auth');
     }

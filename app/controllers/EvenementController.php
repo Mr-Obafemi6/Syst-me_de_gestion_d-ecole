@@ -20,6 +20,7 @@ class EvenementController extends Controller {
     // ─────────────────────────────────────────
     public function index(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('events.view');
 
         $page       = max(1, (int) $this->get('page', 1));
         $pagination = $this->evenementModel->listerAvecDetails($page);
@@ -39,6 +40,7 @@ class EvenementController extends Controller {
     // ─────────────────────────────────────────
     public function ajouter(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('events.create');
 
         $classes = $this->classeModel->toutesLesClasses();
 
@@ -58,6 +60,7 @@ class EvenementController extends Controller {
     // ─────────────────────────────────────────
     public function store(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('events.create');
         $this->requireMethod('POST');
         $this->validateCsrf();
 
@@ -105,6 +108,7 @@ class EvenementController extends Controller {
     // ─────────────────────────────────────────
     public function supprimer(?string $param = null): void {
         AuthMiddleware::requireRole([ROLE_ADMIN, ROLE_PROF]);
+        AuthorizationService::getInstance()->requirePermission('events.delete');
         $this->requireMethod('POST');
         $this->validateCsrf();
 

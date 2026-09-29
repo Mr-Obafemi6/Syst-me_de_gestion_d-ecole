@@ -19,10 +19,11 @@ class Database {
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ];
             try {
-                self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
+                        self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
                 self::ensurePrimaryAcademicSchema(self::$instance);
                 self::$instance->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `photo` VARCHAR(255) DEFAULT NULL");
                 self::$instance->exec("ALTER TABLE `evenements` ADD COLUMN IF NOT EXISTS `photo` VARCHAR(255) DEFAULT NULL");
+                self::ensureTeacherModuleSchema(self::$instance);
             } catch (PDOException $e) {
                 // Ne jamais afficher le message brut en production
                 error_log("Erreur BDD : " . $e->getMessage());
@@ -46,6 +47,8 @@ class Database {
             UNIQUE KEY `uk_niveau_ordre` (`ordre`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        self::ensureTeacherModuleSchema($db);
+
         $niveauColumns = $db->query("SHOW COLUMNS FROM `niveaux`")->fetchAll(PDO::FETCH_COLUMN);
         if (!in_array('cycle', $niveauColumns, true)) {
             $db->exec("ALTER TABLE `niveaux` ADD COLUMN `cycle` ENUM('college','lycee') NOT NULL DEFAULT 'college' AFTER `ordre`");
@@ -56,7 +59,9 @@ class Database {
             `nom` VARCHAR(100) NOT NULL,
             `code` VARCHAR(20) DEFAULT NULL,
             `description` TEXT DEFAULT NULL,
-            `coefficient` DECIMAL(4,2) NOT NULL DEFAULT 1.00,
+            `coefficient` DECIMAL(4,2) DEFAULT NULL,
+            `volume_horaire` DECIMAL(5,2) DEFAULT NULL,
+            `annee_scolaire_id` INT UNSIGNED NOT NULL,
             `classe_id` INT UNSIGNED DEFAULT NULL,
             `prof_id` INT UNSIGNED DEFAULT NULL,
             `statut` TINYINT(1) NOT NULL DEFAULT 1,
@@ -85,19 +90,42 @@ class Database {
         if (!in_array('updated_at', $matiereColumns, true)) {
             $db->exec("ALTER TABLE `matieres` ADD COLUMN `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`");
         }
+        $db->exec("UPDATE `matieres` m LEFT JOIN `classes` c ON c.id = m.classe_id SET m.classe_id = NULL WHERE m.classe_id IS NOT NULL AND c.id IS NULL");
+        $db->exec("ALTER TABLE `matieres` MODIFY COLUMN `classe_id` INT UNSIGNED NULL");
 
         $db->exec("CREATE TABLE IF NOT EXISTS `classe_matieres` (
             `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
             `classe_id` INT UNSIGNED NOT NULL,
             `matiere_id` INT UNSIGNED NOT NULL,
-            `coefficient` DECIMAL(4,2) NOT NULL DEFAULT 1.00,
+            `coefficient` DECIMAL(4,2) DEFAULT NULL,
+            `volume_horaire` DECIMAL(5,2) DEFAULT NULL,
+            `annee_scolaire_id` INT UNSIGNED NOT NULL,
             `statut` TINYINT(1) NOT NULL DEFAULT 1,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
-            UNIQUE KEY `uk_classe_matiere` (`classe_id`, `matiere_id`),
+            UNIQUE KEY `uk_classe_matiere_annee` (`classe_id`, `matiere_id`, `annee_scolaire_id`),
             INDEX `idx_classe` (`classe_id`),
             INDEX `idx_matiere` (`matiere_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $associationColumns = $db->query("SHOW COLUMNS FROM `classe_matieres`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('volume_horaire', $associationColumns, true)) {
+            $db->exec("ALTER TABLE `classe_matieres` ADD COLUMN `volume_horaire` DECIMAL(5,2) DEFAULT NULL AFTER `coefficient`");
+        }
+        if (!in_array('annee_scolaire_id', $associationColumns, true)) {
+            $db->exec("ALTER TABLE `classe_matieres` ADD COLUMN `annee_scolaire_id` INT UNSIGNED NULL AFTER `volume_horaire`");
+            $db->exec("UPDATE `classe_matieres` cm JOIN `classes` c ON c.id = cm.classe_id SET cm.annee_scolaire_id = c.annee_scolaire_id WHERE cm.annee_scolaire_id IS NULL");
+            $db->exec("ALTER TABLE `classe_matieres` MODIFY COLUMN `annee_scolaire_id` INT UNSIGNED NOT NULL");
+        }
+        $db->exec("ALTER TABLE `classe_matieres` MODIFY COLUMN `coefficient` DECIMAL(4,2) DEFAULT NULL");
+        $oldAssociationKey = (int) $db->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'classe_matieres' AND INDEX_NAME = 'uk_classe_matiere'")->fetchColumn();
+        if ($oldAssociationKey > 0) {
+            $db->exec("ALTER TABLE `classe_matieres` DROP INDEX `uk_classe_matiere`");
+        }
+        $newAssociationKey = (int) $db->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'classe_matieres' AND INDEX_NAME = 'uk_classe_matiere_annee'")->fetchColumn();
+        if ($newAssociationKey === 0) {
+            $db->exec("ALTER TABLE `classe_matieres` ADD UNIQUE KEY `uk_classe_matiere_annee` (`classe_id`, `matiere_id`, `annee_scolaire_id`)");
+        }
 
         $db->exec("CREATE TABLE IF NOT EXISTS `periodes` (
             `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -149,6 +177,83 @@ class Database {
                     ('Troisième trimestre', 3, " . (int) $anneeActive['id'] . ", '2025-04-16', '2025-07-31', 1)");
             }
         }
+    }
+
+    private static function ensureTeacherModuleSchema(PDO $db): void {
+        $db->exec("CREATE TABLE IF NOT EXISTS `enseignants` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `user_id` INT UNSIGNED NOT NULL,
+            `matricule` VARCHAR(50) DEFAULT NULL,
+            `nom` VARCHAR(100) DEFAULT NULL,
+            `prenom` VARCHAR(100) DEFAULT NULL,
+            `sexe` ENUM('M','F') DEFAULT NULL,
+            `date_naissance` DATE DEFAULT NULL,
+            `lieu_naissance` VARCHAR(150) DEFAULT NULL,
+            `nationalite` VARCHAR(80) DEFAULT NULL,
+            `telephone` VARCHAR(30) DEFAULT NULL,
+            `email` VARCHAR(150) DEFAULT NULL,
+            `adresse` TEXT DEFAULT NULL,
+            `photo` VARCHAR(255) DEFAULT NULL,
+            `niveau_etude` VARCHAR(100) DEFAULT NULL,
+            `specialite` VARCHAR(150) DEFAULT NULL,
+            `diplome` VARCHAR(150) DEFAULT NULL,
+            `experience` TEXT DEFAULT NULL,
+            `date_recrutement` DATE DEFAULT NULL,
+            `statut_professionnel` VARCHAR(80) DEFAULT NULL,
+            `type_contrat` VARCHAR(80) DEFAULT NULL,
+            `telephone_professionnel` VARCHAR(30) DEFAULT NULL,
+            `email_professionnel` VARCHAR(150) DEFAULT NULL,
+            `compte_statut` ENUM('actif','bloque') NOT NULL DEFAULT 'actif',
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `uk_enseignants_user` (`user_id`),
+            UNIQUE KEY `uk_enseignants_matricule` (`matricule`),
+            INDEX `idx_enseignants_nom` (`nom`, `prenom`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $db->exec("CREATE TABLE IF NOT EXISTS `enseignant_horaires` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `teacher_id` INT UNSIGNED NOT NULL,
+            `class_id` INT UNSIGNED NOT NULL,
+            `subject_id` INT UNSIGNED NOT NULL,
+            `jour` ENUM('Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi') NOT NULL,
+            `heure_debut` TIME NOT NULL,
+            `heure_fin` TIME NOT NULL,
+            `salle` VARCHAR(100) DEFAULT NULL,
+            `school_year_id` INT UNSIGNED NOT NULL,
+            `status` TINYINT(1) NOT NULL DEFAULT 1,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            INDEX `idx_horaire_teacher` (`teacher_id`),
+            INDEX `idx_horaire_classe` (`class_id`),
+            CONSTRAINT `fk_horaire_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_horaire_classe` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_horaire_matiere` FOREIGN KEY (`subject_id`) REFERENCES `matieres`(`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_horaire_annee` FOREIGN KEY (`school_year_id`) REFERENCES `annees_scolaires`(`id`) ON DELETE RESTRICT
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $permissionRows = $db->query("SELECT COUNT(*) FROM `permissions` WHERE `code` IN ('teachers.view','teachers.manage','schedule.view','schedule.manage')")->fetchColumn();
+        if ((int) $permissionRows < 4) {
+            $db->exec("INSERT INTO `permissions` (`nom`, `code`, `description`, `module`) VALUES
+                ('Voir les enseignants', 'teachers.view', 'Consulter les enseignants', 'teachers'),
+                ('Gérer les enseignants', 'teachers.manage', 'Créer, modifier et bloquer les enseignants', 'teachers'),
+                ('Voir les emplois du temps', 'schedule.view', 'Consulter les emplois du temps', 'schedule'),
+                ('Gérer les emplois du temps', 'schedule.manage', 'Créer et modifier les emplois du temps', 'schedule')
+                ON DUPLICATE KEY UPDATE `nom` = VALUES(`nom`), `description` = VALUES(`description`), `module` = VALUES(`module`), `statut` = 1");
+        }
+
+        $db->exec("INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+            SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code = 'teachers.view' WHERE r.code = 'admin'");
+        $db->exec("INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+            SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code = 'teachers.manage' WHERE r.code = 'admin'");
+        $db->exec("INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+            SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code IN ('teachers.view','teachers.manage') WHERE r.code = 'directeur'");
+        $db->exec("INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+            SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code IN ('schedule.view','schedule.manage') WHERE r.code = 'professeur'");
+        $db->exec("INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+            SELECT r.id, p.id FROM `roles` r JOIN `permissions` p ON p.code IN ('teachers.view','teachers.manage','schedule.view','schedule.manage') WHERE r.code = 'admin'");
     }
 
     // Empêcher le clonage du singleton
