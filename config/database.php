@@ -19,11 +19,12 @@ class Database {
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ];
             try {
-                        self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
-                self::ensurePrimaryAcademicSchema(self::$instance);
-                self::$instance->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `photo` VARCHAR(255) DEFAULT NULL");
-                self::$instance->exec("ALTER TABLE `evenements` ADD COLUMN IF NOT EXISTS `photo` VARCHAR(255) DEFAULT NULL");
-                self::ensureTeacherModuleSchema(self::$instance);
+                self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
+                // Les migrations ne tournent qu'une fois par version de schéma
+                // (1 requête légère par page au lieu d'une trentaine).
+                if (self::currentSchemaVersion(self::$instance) < self::SCHEMA_VERSION) {
+                    self::migrate(self::$instance);
+                }
             } catch (PDOException $e) {
                 // Ne jamais afficher le message brut en production
                 error_log("Erreur BDD : " . $e->getMessage());
@@ -31,6 +32,43 @@ class Database {
             }
         }
         return self::$instance;
+    }
+
+    /** À incrémenter à chaque nouvelle modification de schéma dans migrate(). */
+    public const SCHEMA_VERSION = 1;
+
+    private static function currentSchemaVersion(PDO $db): int {
+        try {
+            $v = $db->query("SELECT `version` FROM `schema_meta` LIMIT 1")->fetchColumn();
+            return $v === false ? 0 : (int) $v;
+        } catch (PDOException $e) {
+            return 0; // table absente : première exécution
+        }
+    }
+
+    /** Exécute toutes les migrations idempotentes puis enregistre la version. */
+    public static function migrate(PDO $db): void {
+        self::ensurePrimaryAcademicSchema($db);
+        self::addColumnIfMissing($db, 'users', 'photo', 'VARCHAR(255) DEFAULT NULL');
+        self::addColumnIfMissing($db, 'evenements', 'photo', 'VARCHAR(255) DEFAULT NULL');
+        self::ensureTeacherModuleSchema($db);
+
+        $db->exec("CREATE TABLE IF NOT EXISTS `schema_meta` (
+            `version` INT UNSIGNED NOT NULL,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $db->exec("DELETE FROM `schema_meta`");
+        $db->prepare("INSERT INTO `schema_meta` (`version`) VALUES (?)")->execute([self::SCHEMA_VERSION]);
+    }
+
+    /** Équivalent portable (MySQL 8 + MariaDB) de ADD COLUMN IF NOT EXISTS. */
+    private static function addColumnIfMissing(PDO $db, string $table, string $column, string $definition): void {
+        $exists = $db->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?");
+        $exists->execute([$table, $column]);
+        if ((int) $exists->fetchColumn() === 0) {
+            $db->exec("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
+        }
     }
 
     private static function ensurePrimaryAcademicSchema(PDO $db): void {
