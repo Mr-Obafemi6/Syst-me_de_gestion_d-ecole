@@ -308,7 +308,7 @@ ON DUPLICATE KEY UPDATE `ordre` = VALUES(`ordre`), `date_debut` = VALUES(`date_d
 -- Mot de passe : Admin1234!
 INSERT INTO `users` (`nom`, `prenom`, `email`, `password_hash`, `role`) VALUES (
     'Admin', 'SGE', 'admin@sge.tg',
-    '$2y$12$P/irYOz2KepqS4l07VKlJ.z6JV/Ykn15oR.5xy0rYdHRLpWxUjeZK',
+    '$2y$12$BPifpEYk4aA7Bf/78rfVE.hGcBB6PgM7JBtq1v/5Bm0kSur/A01JO',
     'admin'
 );
 

@@ -31,7 +31,7 @@ http://localhost/SGE/public/
 ### Comptes par défaut
 | Email | Mot de passe | Rôle |
 |-------|-------------|------|
-| admin@sge.tg | Admin1234! | Administrateur |
+| admin@sge.tg | Admin@228 | Administrateur |
 | prof@sge.tg | Admin1234! | Professeur |
 | parent@sge.tg | Admin1234! | Parent |
 

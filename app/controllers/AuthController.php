@@ -3,6 +3,7 @@
 
 require_once ROOT_PATH . '/app/core/Controller.php';
 require_once ROOT_PATH . '/app/models/User.php';
+require_once ROOT_PATH . '/app/services/SmtpMailer.php';
 
 class AuthController extends Controller {
 
@@ -116,21 +117,52 @@ class AuthController extends Controller {
         // Générer le token (même si l'email n'existe pas — sécurité anti-énumération)
         $token = $this->userModel->generateResetToken($email);
 
+        $sent = false;
+
         if ($token !== null) {
-            $link = Router::url('auth/reset?token=' . $token);
-            $sent = @mail($email, 'Réinitialisation de votre mot de passe SGE',
-                "Bonjour,\n\nPour choisir un nouveau mot de passe (valable 1 h) :\n" . $link . "\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.",
-                'Content-Type: text/plain; charset=UTF-8');
-            if (!$sent) {
-                error_log('SGE reset mail non envoyé pour ' . $email);
+            $link = Router::url('auth/reset?token=' . urlencode($token));
+            $body = "Bonjour,\n\nPour choisir un nouveau mot de passe pour votre compte SGE (lien valable 1 heure), cliquez sur :\n"
+                  . $link
+                  . "\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n";
+
+            if (defined('MAIL_HOST') && MAIL_HOST !== '' && defined('MAIL_USERNAME') && MAIL_USERNAME !== ''
+                && defined('MAIL_PASSWORD') && MAIL_PASSWORD !== '' && defined('MAIL_FROM_ADDRESS')
+                && MAIL_FROM_ADDRESS !== '') {
+                $mailer = new SmtpMailer(
+                    MAIL_HOST,
+                    (int) MAIL_PORT,
+                    MAIL_USERNAME,
+                    MAIL_PASSWORD,
+                    MAIL_ENCRYPTION ?? 'tls'
+                );
+                $sent = $mailer->send(
+                    MAIL_FROM_ADDRESS,
+                    MAIL_FROM_NAME ?? 'SGE',
+                    $email,
+                    'Réinitialisation de votre mot de passe SGE',
+                    $body
+                );
+            } else {
+                error_log('SGE SMTP non configuré : renseignez MAIL_* dans config/config.local.php');
             }
         }
 
-        // Même réponse que l'email existe ou non (anti-énumération)
+        if (!$sent && $token !== null) {
+            // Ne pas prétendre qu'un email a été envoyé si le serveur SMTP a refusé l'envoi.
+            $this->render('auth/forgot', [
+                'title'      => 'Mot de passe oublié',
+                'csrf_token' => $this->generateCsrfToken(),
+                'sent'       => false,
+                'error'      => 'Le lien n’a pas pu être envoyé. Vérifiez la configuration SMTP du système.',
+            ], 'auth');
+            return;
+        }
+
+        // Même réponse positive que l'email existe ou non, tant que l'envoi est possible.
         $this->render('auth/forgot', [
             'title'      => 'Mot de passe oublié',
             'csrf_token' => $this->generateCsrfToken(),
-            'sent'       => true,
+            'sent'       => $token === null ? true : $sent,
             'error'      => null,
         ], 'auth');
     }
